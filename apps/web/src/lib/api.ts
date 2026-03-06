@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export interface ProjectMeta {
   id: string;
@@ -69,8 +69,12 @@ export async function fetchModels(): Promise<ModelInfo[]> {
 }
 
 export function getWsUrl(): string {
-  const base = API_BASE.replace(/^http/, "ws");
-  return `${base}/ws`;
+  if (API_BASE) {
+    return API_BASE.replace(/^http/, "ws") + "/ws";
+  }
+  const proto = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = typeof window !== "undefined" ? window.location.host : "localhost:3001";
+  return `${proto}//${host}/ws`;
 }
 
 // Auth
