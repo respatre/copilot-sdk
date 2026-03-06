@@ -1,0 +1,13 @@
+services:
+  devflow:
+    build:
+      context: ..
+      dockerfile: apps/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - PORT=3001
+    volumes:
+      - ./projects:/app/projects
+    restart: unless-stopped

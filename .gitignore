@@ -2,3 +2,18 @@
 # Documentation validation output
 docs/.validation/
 .DS_Store
+
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Environments
+.env
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
