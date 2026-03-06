@@ -25,6 +25,7 @@ export async function createProject(
   name: string,
   model: string,
   broadcast: (msg: WsOutgoing) => void,
+  providerName?: string,
 ): Promise<ProjectMeta> {
   const client = getClient();
   const id = uuidv4();
@@ -33,7 +34,12 @@ export async function createProject(
 
   await fs.mkdir(directory, { recursive: true });
 
-  const config = buildSessionConfig(directory, model, broadcast);
+  const config = await buildSessionConfig(
+    directory,
+    model,
+    broadcast,
+    providerName,
+  );
   const session = await client.createSession(config);
 
   wireSessionEvents(session, broadcast);
@@ -44,6 +50,7 @@ export async function createProject(
     slug,
     sessionId: session.sessionId,
     model,
+    provider: providerName,
     createdAt: new Date().toISOString(),
     directory,
   };
@@ -74,10 +81,11 @@ export async function resumeProject(
       const meta: ProjectMeta = JSON.parse(raw);
       if (meta.id === id) {
         const client = getClient();
-        const config = buildSessionConfig(
+        const config = await buildSessionConfig(
           meta.directory,
           meta.model,
           broadcast,
+          meta.provider,
         );
         const session = await client.resumeSession(meta.sessionId, config);
         wireSessionEvents(session, broadcast);

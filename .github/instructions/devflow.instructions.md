@@ -1,6 +1,6 @@
 ---
 description: Instrucciones de desarrollo de DevFlow — app custom sobre Copilot SDK
-applyTo: 'apps/**'
+applyTo: "apps/**"
 ---
 
 # DevFlow — Aplicación de desarrollo con Copilot SDK
@@ -21,23 +21,31 @@ apps/
 ├── server/          ← Backend Express + Copilot SDK + WebSocket
 │   └── src/
 │       ├── index.ts       → Punto de entrada (Express en puerto 3001)
-│       ├── copilot.ts     → Inicialización de CopilotClient
-│       ├── agents.ts      → Definición de agentes
+│       ├── copilot.ts     → Inicialización de CopilotClient + BYOK provider
+│       ├── config.ts      → Config persistente (providers, defaults)
+│       ├── agents.ts      → Definición de agentes (planner, coder, reviewer)
 │       ├── hooks.ts       → Hooks del SDK (eventos de sesión)
-│       ├── sessions.ts    → Gestión de sesiones Copilot
+│       ├── sessions.ts    → Gestión de sesiones y proyectos
 │       ├── watcher.ts     → File watcher (chokidar)
 │       ├── ws.ts          → WebSocket server (broadcast)
-│       ├── types.ts       → Tipos compartidos
+│       ├── types.ts       → Tipos compartidos (ProviderConfig, AppConfig, etc.)
 │       └── routes/
-│           ├── auth.ts    → Autenticación GitHub
-│           ├── models.ts  → Listado de modelos
-│           └── projects.ts → CRUD de proyectos
-├── web/             ← Frontend Next.js (export estático)
+│           ├── auth.ts      → Autenticación GitHub token
+│           ├── models.ts    → Listado de modelos (multi-provider)
+│           ├── projects.ts  → CRUD de proyectos
+│           ├── settings.ts  → Config de providers (CRUD, test, models)
+│           ├── github.ts    → OAuth + importar repos
+│           └── upload.ts    → Upload ZIP/archivos
+├── web/             ← Frontend Next.js (dev con HMR, export estático para prod)
 │   └── src/
-│       ├── app/           → Pages (App Router)
-│       ├── components/    → UI components
+│       ├── app/
+│       │   ├── page.tsx       → Home (login + galería proyectos)
+│       │   ├── workspace/     → IDE (chat, files, code)
+│       │   └── settings/      → Config de AI providers
+│       ├── components/    → UI components (NewProjectModal, ProjectCard, etc.)
 │       ├── hooks/         → useChat, useFiles
 │       └── lib/api.ts     → Cliente HTTP al server
+├── .cloudflared-config.yml → Tunnel Cloudflare (dev.codigo13.com → :3000)
 ├── Dockerfile         → Multi-stage build (web + server)
 ├── docker-compose.yml → Servicio en puerto 3001
 └── .env.example       → Variables de entorno
@@ -77,20 +85,34 @@ docker compose up -d --build   # Puerto 3001
 El servidor de desarrollo está expuesto vía Cloudflare Tunnel:
 
 - **URL pública**: https://dev.codigo13.com
-- **Tunnel ID**: f5bacb82-8934-44f0-a6d6-2e8732dfbf47
-- **Destino**: localhost:3001 (máquina local octopus)
+- **Tunnel ID**: 37091b5a-ef8c-46c3-b226-93c33cfacc81
+- **Config**: `apps/.cloudflared-config.yml`
+- **Destino**: localhost:3000 (Next.js dev con HMR)
+- **Proxy API**: Next.js rewrite `/api/*` → `http://localhost:3001/api/*`
 - **Comando para iniciar tunnel**:
   ```bash
-  cloudflared tunnel --no-autoupdate run --token eyJhIjoiZGEyNjI0MjVjM2RhMDhhODEwYzY3Zjk3YmI4NzYzZGIiLCJ0IjoiZjViYWNiODItODkzNC00NGYwLWE2ZDYtMmU4NzMyZGZiZjQ3IiwicyI6Ink3TDhialJ1bHhzOFZnSzM4T2Z4YWd2dUFrMno4VHRwcHBYQUYzTGhyQlk9In0=
+  cd apps && cloudflared tunnel --config .cloudflared-config.yml run &
   ```
+
+## REGLA OBLIGATORIA: Despliegue automático
+
+**Después de CUALQUIER cambio en `apps/`**, SIEMPRE debo seguir estos pasos antes de reportar al usuario:
+
+1. **Backend** (si cambió `server/`): matar proceso en 3001 y reiniciar con `cd apps/server && npx tsx watch src/index.ts &`
+2. **Frontend**: verificar que Next.js dev (3000) esté corriendo. Si no: `cd apps/web && npm run dev &`
+3. **Tunnel**: verificar que Cloudflare tunnel esté activo. Si no: `cd apps && cloudflared tunnel --config .cloudflared-config.yml run &`
+4. **Verificar**: `curl -s -o /dev/null -w "%{http_code}" https://dev.codigo13.com/` debe dar `200`
+5. **Si falla**: diagnosticar y arreglar antes de responder al usuario.
+
+El usuario NUNCA debe hacer nada manualmente. Yo soy 100% autónomo. Él solo supervisa y toma decisiones.
 
 ## Variables de entorno
 
-| Variable | Requerida | Descripción |
-|----------|-----------|-------------|
-| GITHUB_TOKEN | Sí | Token de GitHub con acceso a Copilot |
-| PORT | No | Puerto del server (default: 3001) |
-| CLI_URL | No | URL de un Copilot CLI externo |
+| Variable     | Requerida | Descripción                          |
+| ------------ | --------- | ------------------------------------ |
+| GITHUB_TOKEN | Sí        | Token de GitHub con acceso a Copilot |
+| PORT         | No        | Puerto del server (default: 3001)    |
+| CLI_URL      | No        | URL de un Copilot CLI externo        |
 
 ## Flujo de datos
 
@@ -100,8 +122,8 @@ Browser → Next.js (estático) → HTTP/WS → Express → @github/copilot-sdk 
 
 ## Git remotes
 
-| Remote   | URL | Uso |
-|----------|-----|-----|
+| Remote   | URL                             | Uso                 |
+| -------- | ------------------------------- | ------------------- |
 | origin   | github.com/respatre/copilot-sdk | Push (nuestro fork) |
 | upstream | github.com/github/copilot-sdk   | Pull (repo oficial) |
 

@@ -6,6 +6,7 @@ export interface ProjectMeta {
   slug: string;
   sessionId: string;
   model: string;
+  provider?: string;
   createdAt: string;
   directory: string;
 }
@@ -31,11 +32,12 @@ export async function fetchProjects(): Promise<ProjectMeta[]> {
 export async function createProject(
   name: string,
   model: string,
+  provider?: string,
 ): Promise<ProjectMeta> {
   const res = await fetch(`${API_BASE}/api/projects`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, model }),
+    body: JSON.stringify({ name, model, provider }),
   });
   if (!res.ok) throw new Error("Failed to create project");
   return res.json();
@@ -62,8 +64,9 @@ export async function fetchFileContent(
   return res.text();
 }
 
-export async function fetchModels(): Promise<ModelInfo[]> {
-  const res = await fetch(`${API_BASE}/api/models`);
+export async function fetchModels(provider?: string): Promise<ModelInfo[]> {
+  const qs = provider ? `?provider=${provider}` : "";
+  const res = await fetch(`${API_BASE}/api/models${qs}`);
   if (!res.ok) return [];
   return res.json();
 }
@@ -72,8 +75,12 @@ export function getWsUrl(): string {
   if (API_BASE) {
     return API_BASE.replace(/^http/, "ws") + "/ws";
   }
-  const proto = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
-  const host = typeof window !== "undefined" ? window.location.host : "localhost:3001";
+  const proto =
+    typeof window !== "undefined" && window.location.protocol === "https:"
+      ? "wss:"
+      : "ws:";
+  const host =
+    typeof window !== "undefined" ? window.location.host : "localhost:3001";
   return `${proto}//${host}/ws`;
 }
 
@@ -104,4 +111,194 @@ export async function submitToken(token: string): Promise<AuthStatus> {
 
 export async function logout(): Promise<void> {
   await fetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
+}
+
+// ── GitHub OAuth ──
+
+export interface GitHubConnectionStatus {
+  connected: boolean;
+  user?: {
+    login: string;
+    avatar_url: string;
+    name: string | null;
+    html_url: string;
+  };
+}
+
+export interface GitHubRepo {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  html_url: string;
+  clone_url: string;
+  description: string | null;
+  language: string | null;
+  default_branch: string;
+  updated_at: string;
+}
+
+export async function fetchGitHubStatus(): Promise<GitHubConnectionStatus> {
+  const res = await fetch(`${API_BASE}/api/github/status`);
+  return res.json();
+}
+
+export async function startGitHubOAuth(): Promise<{ url: string }> {
+  const res = await fetch(`${API_BASE}/api/github/oauth/start`);
+  if (!res.ok) throw new Error("Failed to start OAuth");
+  return res.json();
+}
+
+export async function disconnectGitHub(): Promise<void> {
+  await fetch(`${API_BASE}/api/github/disconnect`, { method: "POST" });
+}
+
+export async function fetchGitHubRepos(
+  page = 1,
+  sort = "updated",
+): Promise<GitHubRepo[]> {
+  const res = await fetch(
+    `${API_BASE}/api/github/repos?page=${page}&sort=${sort}`,
+  );
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function cloneGitHubRepo(
+  repoFullName: string,
+  branch?: string,
+): Promise<ProjectMeta> {
+  const res = await fetch(`${API_BASE}/api/github/clone`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repoFullName, branch }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Clone failed" }));
+    throw new Error(err.error || "Clone failed");
+  }
+  return res.json();
+}
+
+// ── Upload ──
+
+export async function uploadZip(
+  file: File,
+  name?: string,
+): Promise<ProjectMeta> {
+  const form = new FormData();
+  form.append("file", file);
+  if (name) form.append("name", name);
+
+  const res = await fetch(`${API_BASE}/api/upload/zip`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Upload failed" }));
+    throw new Error(err.error || "Upload failed");
+  }
+  return res.json();
+}
+
+export async function uploadFiles(
+  files: FileList | File[],
+  name: string,
+  paths?: string[],
+): Promise<ProjectMeta> {
+  const form = new FormData();
+  form.append("name", name);
+
+  const fileArray = Array.from(files);
+  for (let i = 0; i < fileArray.length; i++) {
+    form.append("files", fileArray[i]);
+    if (paths && paths[i]) {
+      form.append(`paths[${i}]`, paths[i]);
+    }
+  }
+
+  const res = await fetch(`${API_BASE}/api/upload/files`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Upload failed" }));
+    throw new Error(err.error || "Upload failed");
+  }
+  return res.json();
+}
+
+// ── Settings / Providers ──
+
+export interface ProviderConfig {
+  type: "openai" | "azure" | "anthropic";
+  label: string;
+  baseUrl?: string;
+  apiKey?: string;
+  wireApi?: "completions" | "responses";
+}
+
+export interface AppSettings {
+  defaultProvider: string;
+  providers: Record<string, ProviderConfig>;
+}
+
+export async function fetchSettings(): Promise<AppSettings> {
+  const res = await fetch(`${API_BASE}/api/settings`);
+  if (!res.ok) throw new Error("Failed to fetch settings");
+  return res.json();
+}
+
+export async function saveSettings(
+  settings: Partial<AppSettings>,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) throw new Error("Failed to save settings");
+}
+
+export async function testProvider(
+  name: string,
+): Promise<{ ok: boolean; error?: string; message?: string }> {
+  const res = await fetch(
+    `${API_BASE}/api/settings/providers/${encodeURIComponent(name)}/test`,
+    { method: "POST" },
+  );
+  return res.json();
+}
+
+export async function addProvider(
+  name: string,
+  config: ProviderConfig,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/settings/providers/${encodeURIComponent(name)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    },
+  );
+  if (!res.ok) throw new Error("Failed to add provider");
+}
+
+export async function removeProvider(name: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/settings/providers/${encodeURIComponent(name)}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) throw new Error("Failed to remove provider");
+}
+
+export async function fetchProviderModels(
+  providerName: string,
+): Promise<ModelInfo[]> {
+  const res = await fetch(
+    `${API_BASE}/api/settings/providers/${encodeURIComponent(providerName)}/models`,
+  );
+  if (!res.ok) return [];
+  return res.json();
 }

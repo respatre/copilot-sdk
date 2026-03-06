@@ -5,8 +5,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { initCopilot, stopCopilot } from "./copilot.js";
 import { authRoutes } from "./routes/auth.js";
+import { githubRoutes } from "./routes/github.js";
 import { modelRoutes } from "./routes/models.js";
 import { projectRoutes } from "./routes/projects.js";
+import { settingsRoutes } from "./routes/settings.js";
+import { uploadRoutes } from "./routes/upload.js";
 import { startWatcher } from "./watcher.js";
 import { broadcast, setupWebSocket } from "./ws.js";
 
@@ -26,8 +29,11 @@ async function main(): Promise<void> {
 
   // API routes
   app.use("/api/auth", authRoutes());
+  app.use("/api/github", githubRoutes(broadcast));
+  app.use("/api/upload", uploadRoutes(broadcast));
   app.use("/api/projects", projectRoutes(broadcast));
   app.use("/api/models", modelRoutes());
+  app.use("/api/settings", settingsRoutes());
 
   // Health check
   app.get("/api/health", (_req, res) => {

@@ -10,15 +10,21 @@
   },
   "dependencies": {
     "@github/copilot-sdk": "file:../../nodejs",
+    "archiver": "^7.0.1",
     "chokidar": "^4.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "multer": "^2.1.1",
+    "unzipper": "^0.12.3",
     "uuid": "^11.1.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.1.0",
+    "@types/unzipper": "^0.10.11",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.0",
     "tsx": "^4.19.0",

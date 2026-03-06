@@ -23,13 +23,22 @@ export function projectRoutes(broadcast: (msg: WsOutgoing) => void): Router {
 
   // Create project
   router.post("/", async (req, res) => {
-    const { name, model } = req.body as { name?: string; model?: string };
+    const { name, model, provider } = req.body as {
+      name?: string;
+      model?: string;
+      provider?: string;
+    };
     if (!name) {
       res.status(400).json({ error: "name is required" });
       return;
     }
     try {
-      const meta = await createProject(name, model || "gpt-4.1", broadcast);
+      const meta = await createProject(
+        name,
+        model || "gpt-4.1",
+        broadcast,
+        provider,
+      );
       res.status(201).json(meta);
     } catch (err) {
       res.status(500).json({ error: String(err) });

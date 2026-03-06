@@ -1,0 +1,7 @@
+tunnel: 37091b5a-ef8c-46c3-b226-93c33cfacc81
+credentials-file: /home/trefactory/.cloudflared/37091b5a-ef8c-46c3-b226-93c33cfacc81.json
+
+ingress:
+  - hostname: dev.codigo13.com
+    service: http://localhost:3000
+  - service: http_status:404

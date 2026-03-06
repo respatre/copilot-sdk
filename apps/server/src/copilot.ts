@@ -6,6 +6,7 @@ import {
   approveAll,
 } from "@github/copilot-sdk";
 import { agents } from "./agents.js";
+import { getConfig, getProviderSdkConfig } from "./config.js";
 import { createHooks } from "./hooks.js";
 import type { WsOutgoing } from "./types.js";
 
@@ -45,14 +46,19 @@ export async function stopCopilot(): Promise<void> {
   }
 }
 
-export function buildSessionConfig(
+export async function buildSessionConfig(
   projectDir: string,
   model: string,
   broadcast: (msg: WsOutgoing) => void,
-): SessionConfig {
+  providerName?: string,
+): Promise<SessionConfig> {
+  const config = await getConfig();
+  const provider = getProviderSdkConfig(config, providerName);
+
   return {
     model,
     streaming: true,
+    ...(provider ? { provider } : {}),
     onPermissionRequest: approveAll,
     workingDirectory: projectDir,
     infiniteSessions: {

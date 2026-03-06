@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Trash2 } from "lucide-react";
+import { Clock, Server, Trash2 } from "lucide-react";
 import type { ProjectMeta } from "../lib/api";
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
 export default function ProjectCard({ project, onOpen, onDelete }: Props) {
   const date = new Date(project.createdAt);
   const timeAgo = formatTimeAgo(date);
+  const providerLabel = project.provider || "copilot";
 
   return (
     <div
@@ -31,7 +32,7 @@ export default function ProjectCard({ project, onOpen, onDelete }: Props) {
             {project.name}
           </h3>
           <div
-            className="flex items-center gap-1.5 mt-1.5 text-xs"
+            className="flex items-center gap-1.5 mt-1.5 text-xs flex-wrap"
             style={{ color: "var(--text-muted)" }}
           >
             <Clock size={12} />
@@ -40,6 +41,18 @@ export default function ProjectCard({ project, onOpen, onDelete }: Props) {
             <span className="font-mono" style={{ color: "var(--purple-400)" }}>
               {project.model}
             </span>
+            {providerLabel !== "copilot" && (
+              <>
+                <span style={{ color: "var(--border-subtle)" }}>·</span>
+                <span
+                  className="flex items-center gap-0.5"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <Server size={10} />
+                  {providerLabel}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <button

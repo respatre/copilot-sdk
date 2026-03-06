@@ -1,16 +1,19 @@
 "use client";
 
-import { Github, LogOut, Plus, Zap } from "lucide-react";
+import { Github, LogOut, Plus, Settings, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import NewProjectModal from "../components/NewProjectModal";
 import ProjectCard from "../components/ProjectCard";
 import {
+  type AppSettings,
   type AuthStatus,
   createProject,
   deleteProject,
   fetchAuthStatus,
   fetchModels,
   fetchProjects,
+  fetchSettings,
   logout,
   type ModelInfo,
   type ProjectMeta,
@@ -21,10 +24,8 @@ export default function HomePage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [showNew, setShowNew] = useState(false);
-  const [name, setName] = useState("");
-  const [model, setModel] = useState("");
-  const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Auth state
@@ -48,10 +49,10 @@ export default function HomePage() {
         .then(setProjects)
         .catch(() => {}),
       fetchModels()
-        .then((m) => {
-          setModels(m);
-          if (m.length > 0) setModel(m[0].id);
-        })
+        .then(setModels)
+        .catch(() => {}),
+      fetchSettings()
+        .then(setSettings)
         .catch(() => {}),
     ]).finally(() => setLoading(false));
   }, [auth?.isAuthenticated]);
@@ -82,17 +83,22 @@ export default function HomePage() {
     setModels([]);
   };
 
-  const handleCreate = async () => {
-    if (!name.trim()) return;
-    setCreating(true);
+  const handleCreateBlank = async (
+    name: string,
+    model: string,
+    provider?: string,
+  ) => {
     try {
-      const project = await createProject(name.trim(), model || "gpt-4.1");
+      const project = await createProject(name, model, provider);
       router.push(`/workspace?id=${project.id}`);
     } catch (err) {
       alert("Failed to create project: " + String(err));
-    } finally {
-      setCreating(false);
     }
+  };
+
+  const handleProjectCreated = (project: ProjectMeta) => {
+    setShowNew(false);
+    router.push(`/workspace?id=${project.id}`);
   };
 
   const handleDelete = async (id: string) => {
@@ -204,6 +210,14 @@ export default function HomePage() {
                     {auth.login}
                   </span>
                   <button
+                    onClick={() => router.push("/settings")}
+                    className="p-1.5 rounded-lg transition-colors"
+                    style={{ color: "var(--text-muted)" }}
+                    title="Settings"
+                  >
+                    <Settings size={14} />
+                  </button>
+                  <button
                     onClick={handleLogout}
                     className="p-1.5 rounded-lg transition-colors"
                     style={{ color: "var(--text-muted)" }}
@@ -255,76 +269,14 @@ export default function HomePage() {
 
           {/* ─── New project modal ─── */}
           {showNew && (
-            <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center backdrop-blur-sm">
-              <div
-                className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 safe-bottom glass"
-                style={{ background: "var(--bg-secondary)" }}
-              >
-                <h2
-                  className="font-semibold text-lg"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  New Project
-                </h2>
-                <div>
-                  <label
-                    className="text-xs block mb-1.5"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    Project name
-                  </label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="My Awesome App"
-                    autoFocus
-                    className="w-full input-orbe px-4 py-2.5 text-sm outline-none"
-                    style={{ color: "var(--text-primary)" }}
-                  />
-                </div>
-                {models.length > 0 && (
-                  <div>
-                    <label
-                      className="text-xs block mb-1.5"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      Model
-                    </label>
-                    <select
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      className="w-full input-orbe px-4 py-2.5 text-sm outline-none"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name || m.id}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={() => setShowNew(false)}
-                    className="flex-1 py-2.5 rounded-2xl text-sm transition-colors"
-                    style={{
-                      background: "var(--bg-input)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreate}
-                    disabled={!name.trim() || creating}
-                    className="flex-1 py-2.5 rounded-2xl text-sm font-semibold text-white gradient-btn disabled:opacity-40"
-                  >
-                    {creating ? "Creating..." : "Create"}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <NewProjectModal
+              models={models}
+              defaultModel={models[0]?.id || "gpt-4.1"}
+              settings={settings}
+              onCreated={handleProjectCreated}
+              onCancel={() => setShowNew(false)}
+              onCreateBlank={handleCreateBlank}
+            />
           )}
 
           {/* ─── FAB ─── */}
