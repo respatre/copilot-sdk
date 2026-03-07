@@ -32,6 +32,11 @@ async function main(): Promise<void> {
   // DevFlow auth (login route — public)
   app.use("/api/devflow", devflowAuthRoutes());
 
+  // Health check (public — used by deploy pipeline)
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: Date.now() });
+  });
+
   // Serve static frontend (public — auth is handled client-side)
   const staticDir = path.join(__dirname, "../../web/out");
   app.use(express.static(staticDir));
@@ -46,11 +51,6 @@ async function main(): Promise<void> {
   app.use("/api/projects", projectRoutes(broadcast));
   app.use("/api/models", modelRoutes());
   app.use("/api/settings", settingsRoutes());
-
-  // Health check
-  app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: Date.now() });
-  });
 
   // SPA fallback — serves index.html for all non-API routes
   app.get("{*path}", (_req, res) => {
