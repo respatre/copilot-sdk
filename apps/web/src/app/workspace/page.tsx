@@ -34,7 +34,9 @@ function WorkspaceContent() {
   const projectId = searchParams.get("id") ?? "";
 
   const [project, setProject] = useState<ProjectMeta | null>(null);
-  const [agents, setAgents] = useState<AgentNode[]>([]);
+  const [agents, setAgents] = useState<AgentNode[]>(() =>
+    loadAgents(projectId),
+  );
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [chatAgentId, setChatAgentId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -43,15 +45,9 @@ function WorkspaceContent() {
   useEffect(() => {
     if (!projectId) return;
     fetchProjects().then((projects) => {
-      const p = projects.find((p) => p.id === projectId);
-      if (p) setProject(p);
+      const found = projects.find((p) => p.id === projectId);
+      if (found) setProject(found);
     });
-  }, [projectId]);
-
-  // Load agents from localStorage
-  useEffect(() => {
-    if (!projectId) return;
-    setAgents(loadAgents(projectId));
   }, [projectId]);
 
   // Persist agents on change

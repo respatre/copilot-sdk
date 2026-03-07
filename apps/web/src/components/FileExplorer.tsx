@@ -66,12 +66,12 @@ export default function FileExplorer({
         style={{ color: "var(--text-muted)" }}
       >
         <Folder size={32} style={{ color: "var(--text-muted)" }} />
-        <p>No files yet</p>
+        <p>Aún no hay archivos</p>
         <p
           className="text-xs text-center"
           style={{ color: "var(--text-muted)" }}
         >
-          Start chatting to generate your project files
+          Empieza a chatear para generar los archivos
         </p>
       </div>
     );
@@ -83,7 +83,7 @@ export default function FileExplorer({
       className="h-full overflow-y-auto px-2 py-3"
       style={{ background: "var(--bg-primary)" }}
       role="tree"
-      aria-label="Project files"
+      aria-label="Archivos del proyecto"
       onKeyDown={handleKeyDown}
     >
       {files.map((node) => (

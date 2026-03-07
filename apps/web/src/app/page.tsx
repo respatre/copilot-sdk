@@ -202,7 +202,7 @@ export default function HomePage() {
       ) : loggedIn ? (
         <>
           {/* ─── Header ─── */}
-          <header className="glass-header sticky top-0 z-40 px-4 pt-12 pb-4">
+          <header className="glass-header sticky top-0 z-40 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <Zap size={22} style={{ color: "var(--purple-400)" }} />

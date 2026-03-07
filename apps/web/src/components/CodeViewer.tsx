@@ -73,7 +73,7 @@ export default function CodeViewer({
         className="flex items-center justify-center h-full text-sm"
         style={{ color: "var(--text-muted)" }}
       >
-        Loading...
+        Cargando...
       </div>
     );
   }
@@ -84,7 +84,7 @@ export default function CodeViewer({
         className="flex flex-col items-center justify-center h-full text-sm gap-2"
         style={{ color: "var(--text-muted)" }}
       >
-        <p>Empty file</p>
+        <p>Archivo vacío</p>
       </div>
     );
   }
@@ -97,7 +97,7 @@ export default function CodeViewer({
       className="flex flex-col h-full"
       style={{ background: "var(--bg-primary)" }}
       role="region"
-      aria-label={`Code viewer: ${fileName}`}
+      aria-label={`Visor de código: ${fileName}`}
     >
       {/* Header */}
       <div
@@ -120,7 +120,7 @@ export default function CodeViewer({
             onClick={handleCopy}
             className="p-1.5 rounded transition-colors"
             style={{ color: copied ? "#22c55e" : "var(--text-muted)" }}
-            aria-label={copied ? "Copied" : "Copy file contents"}
+            aria-label={copied ? "Copiado" : "Copiar contenido"}
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
           </button>
@@ -128,7 +128,7 @@ export default function CodeViewer({
             onClick={() => onRequestChange(filePath)}
             className="p-1.5 rounded transition-colors"
             style={{ color: "var(--text-muted)" }}
-            aria-label="Request change in chat"
+            aria-label="Solicitar cambio en el chat"
           >
             <MessageSquare size={14} />
           </button>
@@ -136,7 +136,7 @@ export default function CodeViewer({
             onClick={onClose}
             className="p-1.5 rounded transition-colors"
             style={{ color: "var(--text-muted)" }}
-            aria-label="Close file"
+            aria-label="Cerrar archivo"
           >
             <X size={14} />
           </button>

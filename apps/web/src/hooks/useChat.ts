@@ -42,116 +42,126 @@ export function useChat(projectId: string | null) {
   const msgIdRef = useRef(0);
   const reconnectCountRef = useRef(0);
 
-  const connect = useCallback(() => {
+  useEffect(() => {
     if (!projectId) return;
 
-    const isReconnect = reconnectCountRef.current > 0;
-    setConnectionStatus(isReconnect ? "reconnecting" : "connecting");
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
 
-    const token = getStoredToken();
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = proto + "//" + window.location.host + "/ws" + tokenParam;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    function connect() {
+      if (disposed) return;
 
-    ws.onopen = () => {
-      setConnectionStatus("connected");
-      reconnectCountRef.current = 0;
-    };
+      const isReconnect = reconnectCountRef.current > 0;
+      setConnectionStatus(isReconnect ? "reconnecting" : "connecting");
 
-    ws.onmessage = (e) => {
-      const evt: WsEvent = JSON.parse(e.data);
+      const token = getStoredToken();
+      const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = proto + "//" + window.location.host + "/ws" + tokenParam;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-      switch (evt.type) {
-        case "message_delta":
-          streamingRef.current += evt.content ?? "";
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (
-              last?.role === "assistant" &&
-              last.id === `stream-${msgIdRef.current}`
-            ) {
+      ws.onopen = () => {
+        setConnectionStatus("connected");
+        reconnectCountRef.current = 0;
+      };
+
+      ws.onmessage = (e) => {
+        const evt: WsEvent = JSON.parse(e.data);
+
+        switch (evt.type) {
+          case "message_delta":
+            streamingRef.current += evt.content ?? "";
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (
+                last?.role === "assistant" &&
+                last.id === `stream-${msgIdRef.current}`
+              ) {
+                return [
+                  ...prev.slice(0, -1),
+                  { ...last, content: streamingRef.current },
+                ];
+              }
               return [
-                ...prev.slice(0, -1),
-                { ...last, content: streamingRef.current },
+                ...prev,
+                {
+                  id: `stream-${msgIdRef.current}`,
+                  role: "assistant",
+                  content: streamingRef.current,
+                  timestamp: Date.now(),
+                },
               ];
-            }
-            return [
+            });
+            break;
+
+          case "message_complete":
+            setStreaming(false);
+            streamingRef.current = "";
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (last?.role === "assistant") {
+                return [
+                  ...prev.slice(0, -1),
+                  { ...last, content: evt.content ?? last.content },
+                ];
+              }
+              return prev;
+            });
+            break;
+
+          case "tool_start":
+            setTool({ toolName: evt.toolName ?? "tool", status: "running" });
+            break;
+
+          case "tool_complete":
+            setTool({ toolName: evt.toolName ?? "tool", status: "done" });
+            setTimeout(() => setTool(null), 1000);
+            break;
+
+          case "session_idle":
+            setStreaming(false);
+            setTool(null);
+            break;
+
+          case "file_created":
+          case "file_updated":
+          case "file_deleted":
+            setFileEvents((prev) => [...prev, evt]);
+            break;
+
+          case "error":
+            setMessages((prev) => [
               ...prev,
               {
-                id: `stream-${msgIdRef.current}`,
+                id: `err-${Date.now()}`,
                 role: "assistant",
-                content: streamingRef.current,
+                content: `**Error:** ${evt.message}`,
                 timestamp: Date.now(),
               },
-            ];
-          });
-          break;
+            ]);
+            setStreaming(false);
+            break;
+        }
+      };
 
-        case "message_complete":
-          setStreaming(false);
-          streamingRef.current = "";
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last?.role === "assistant") {
-              return [
-                ...prev.slice(0, -1),
-                { ...last, content: evt.content ?? last.content },
-              ];
-            }
-            return prev;
-          });
-          break;
+      ws.onclose = () => {
+        setConnectionStatus("disconnected");
+        reconnectCountRef.current++;
+        if (!disposed) {
+          reconnectTimer = setTimeout(connect, 2000);
+        }
+      };
+    }
 
-        case "tool_start":
-          setTool({ toolName: evt.toolName ?? "tool", status: "running" });
-          break;
+    connect();
 
-        case "tool_complete":
-          setTool({ toolName: evt.toolName ?? "tool", status: "done" });
-          setTimeout(() => setTool(null), 1000);
-          break;
-
-        case "session_idle":
-          setStreaming(false);
-          setTool(null);
-          break;
-
-        case "file_created":
-        case "file_updated":
-        case "file_deleted":
-          setFileEvents((prev) => [...prev, evt]);
-          break;
-
-        case "error":
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `err-${Date.now()}`,
-              role: "assistant",
-              content: `**Error:** ${evt.message}`,
-              timestamp: Date.now(),
-            },
-          ]);
-          setStreaming(false);
-          break;
-      }
+    return () => {
+      disposed = true;
+      clearTimeout(reconnectTimer);
+      wsRef.current?.close();
     };
-
-    ws.onclose = () => {
-      setConnectionStatus("disconnected");
-      reconnectCountRef.current++;
-      setTimeout(connect, 2000);
-    };
-
-    return () => ws.close();
   }, [projectId]);
-
-  useEffect(() => {
-    const cleanup = connect();
-    return () => cleanup?.();
-  }, [connect]);
 
   const sendMessage = useCallback(
     (prompt: string) => {

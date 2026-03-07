@@ -30,7 +30,7 @@ export default function ToolIndicator({ tool }: Props) {
         <Wrench size={12} style={{ color: "#34d399" }} />
       )}
       <span>
-        {tool.status === "running" ? "Running" : "Done"}:{" "}
+        {tool.status === "running" ? "Ejecutando" : "Listo"}:{" "}
         <span className="font-mono" style={{ color: "var(--text-primary)" }}>
           {tool.toolName}
         </span>

@@ -290,8 +290,6 @@ function BlankProjectTab({
 // ─── GitHub Tab ───
 
 function GitHubTab({
-  models,
-  defaultModel,
   onCreated,
 }: {
   models: ModelInfo[];
@@ -349,7 +347,7 @@ function GitHubTab({
       const { url } = await startGitHubOAuth();
       window.open(url, "github-oauth", "width=600,height=700");
     } catch {
-      setError("Failed to start OAuth flow");
+      setError("No se pudo iniciar la conexión con GitHub");
     }
   };
 
@@ -419,9 +417,12 @@ function GitHubTab({
       {/* Connected header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={ghStatus.user?.avatar_url}
             alt=""
+            width={24}
+            height={24}
             className="w-6 h-6 rounded-full"
           />
           <span

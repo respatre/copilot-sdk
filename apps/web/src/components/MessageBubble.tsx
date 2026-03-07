@@ -15,7 +15,7 @@ export default function MessageBubble({ role, content }: Props) {
     <div
       className={`flex ${isUser ? "justify-end" : "justify-start"} animate-msg-in`}
       role="article"
-      aria-label={isUser ? "Your message" : "Assistant message"}
+      aria-label={isUser ? "Tu mensaje" : "Mensaje del asistente"}
     >
       <div
         className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed break-words ${
@@ -63,13 +63,13 @@ const CodeBlock = memo(function CodeBlock({
           className="text-[10px] font-mono"
           style={{ color: "var(--text-muted)" }}
         >
-          {lang || "code"}
+          {lang || "código"}
         </span>
         <button
           onClick={handleCopy}
           className="p-1 rounded transition-colors"
           style={{ color: "var(--text-muted)" }}
-          aria-label={copied ? "Copied" : "Copy code"}
+          aria-label={copied ? "Copiado" : "Copiar código"}
         >
           {copied ? (
             <Check size={12} style={{ color: "#22c55e" }} />

@@ -12,8 +12,8 @@ interface Props {
 
 const tabs: { id: TabId; label: string; icon: typeof MessageSquare }[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
-  { id: "files", label: "Files", icon: FolderTree },
-  { id: "code", label: "Code", icon: Code },
+  { id: "files", label: "Archivos", icon: FolderTree },
+  { id: "code", label: "Código", icon: Code },
 ];
 
 export default function BottomNav({ active, onChange, hasNewFiles }: Props) {
@@ -21,7 +21,7 @@ export default function BottomNav({ active, onChange, hasNewFiles }: Props) {
     <nav
       className="fixed bottom-0 left-0 right-0 flex z-50 safe-bottom glass-header"
       role="tablist"
-      aria-label="Workspace navigation"
+      aria-label="Navegación del espacio de trabajo"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;

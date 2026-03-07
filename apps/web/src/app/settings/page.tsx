@@ -73,7 +73,7 @@ export default function SettingsPage() {
         }
         setProviderStates(states);
       })
-      .catch(() => setError("Failed to load settings"));
+      .catch(() => setError("No se pudo cargar la configuración"));
 
     fetchAuthStatus()
       .then(setAuthStatus)
@@ -120,8 +120,8 @@ export default function SettingsPage() {
           ...prev[name],
           testStatus: result.ok ? "ok" : "error",
           testMessage: result.ok
-            ? result.message || "Connected"
-            : result.error || "Failed",
+            ? result.message || "Conectado"
+            : result.error || "Falló",
         },
       }));
     } catch {
@@ -130,7 +130,7 @@ export default function SettingsPage() {
         [name]: {
           ...prev[name],
           testStatus: "error",
-          testMessage: "Connection failed",
+          testMessage: "Error de conexión",
         },
       }));
     }
@@ -143,7 +143,7 @@ export default function SettingsPage() {
       await saveSettings({ defaultProvider: name });
       setSettings({ ...settings, defaultProvider: name });
     } catch {
-      setError("Failed to save");
+      setError("No se pudo guardar");
     } finally {
       setSaving(false);
     }
@@ -163,7 +163,7 @@ export default function SettingsPage() {
         return copy;
       });
     } catch {
-      setError("Failed to remove provider");
+      setError("No se pudo eliminar el proveedor");
     }
   };
 
@@ -196,7 +196,7 @@ export default function SettingsPage() {
     try {
       await saveSettings({ providers: { [name]: settings.providers[name] } });
     } catch {
-      setError("Failed to save");
+      setError("No se pudo guardar");
     } finally {
       setSaving(false);
     }
@@ -220,13 +220,13 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       {/* Header */}
-      <header className="glass-header sticky top-0 z-40 px-4 pt-12 pb-4">
+      <header className="glass-header sticky top-0 z-40 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
             className="p-1.5 rounded-lg"
             style={{ color: "var(--text-muted)" }}
-            aria-label="Go back"
+            aria-label="Volver"
           >
             <ArrowLeft size={20} />
           </button>
@@ -234,7 +234,7 @@ export default function SettingsPage() {
             className="text-lg font-semibold"
             style={{ color: "var(--text-primary)" }}
           >
-            Settings
+            Ajustes
           </h1>
         </div>
       </header>
@@ -294,7 +294,7 @@ export default function SettingsPage() {
                       className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                       style={{ background: "#22c55e", color: "#fff" }}
                     >
-                      ACTIVE
+                      ACTIVO
                     </span>
                   )}
                 </div>
@@ -409,7 +409,7 @@ export default function SettingsPage() {
             className="text-xs font-semibold uppercase tracking-wider mb-3"
             style={{ color: "var(--text-muted)" }}
           >
-            AI Providers
+            Proveedores de IA
           </h2>
           <div className="space-y-3">
             {Object.entries(settings.providers).map(([name, prov]) => {
@@ -460,7 +460,7 @@ export default function SettingsPage() {
                               color: "#fff",
                             }}
                           >
-                            DEFAULT
+                            PREDETERMINADO
                           </span>
                         )}
                       </div>
@@ -470,7 +470,7 @@ export default function SettingsPage() {
                       >
                         {name === "copilot"
                           ? "GitHub Copilot SDK"
-                          : prov.baseUrl || "No URL"}
+                          : prov.baseUrl || "Sin URL"}
                       </span>
                     </div>
 
@@ -569,7 +569,7 @@ export default function SettingsPage() {
                           ) : (
                             <Wifi size={14} />
                           )}
-                          Test
+                          Probar
                         </button>
 
                         {!isDefault && (
@@ -579,7 +579,7 @@ export default function SettingsPage() {
                             className="flex-1 py-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 gradient-btn text-white"
                           >
                             <Check size={14} />
-                            Set Default
+                            Predeterminado
                           </button>
                         )}
 
@@ -637,7 +637,7 @@ export default function SettingsPage() {
             }}
           >
             <Plus size={16} />
-            Add Provider
+            Agregar Proveedor
           </button>
         )}
       </main>
@@ -673,7 +673,7 @@ function AddProviderForm({
   const handleAdd = async () => {
     if (!label.trim() || !baseUrl.trim()) return;
     if (existingNames.includes(slug)) {
-      setError("A provider with this name already exists");
+      setError("Ya existe un proveedor con ese nombre");
       return;
     }
     setAdding(true);
@@ -717,14 +717,14 @@ function AddProviderForm({
           className="text-xs block mb-1"
           style={{ color: "var(--text-secondary)" }}
         >
-          Name
+          Nombre
         </label>
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           className="w-full input-orbe px-3 py-2 text-sm outline-none"
           style={{ color: "var(--text-primary)" }}
-          placeholder="My Provider"
+          placeholder="Mi Proveedor"
         />
       </div>
 
@@ -733,7 +733,7 @@ function AddProviderForm({
           className="text-xs block mb-1"
           style={{ color: "var(--text-secondary)" }}
         >
-          Type
+          Tipo
         </label>
         <select
           value={provType}
@@ -743,7 +743,7 @@ function AddProviderForm({
           className="w-full input-orbe px-3 py-2 text-sm outline-none"
           style={{ color: "var(--text-primary)" }}
         >
-          <option value="openai">OpenAI-compatible</option>
+          <option value="openai">Compatible con OpenAI</option>
           <option value="azure">Azure</option>
           <option value="anthropic">Anthropic</option>
         </select>
@@ -770,7 +770,7 @@ function AddProviderForm({
           className="text-xs block mb-1"
           style={{ color: "var(--text-secondary)" }}
         >
-          API Key <span style={{ color: "var(--text-muted)" }}>(optional)</span>
+          API Key <span style={{ color: "var(--text-muted)" }}>(opcional)</span>
         </label>
         <input
           type="password"
@@ -793,7 +793,7 @@ function AddProviderForm({
         disabled={!label.trim() || !baseUrl.trim() || adding}
         className="w-full py-2.5 rounded-2xl text-sm font-semibold text-white gradient-btn disabled:opacity-40"
       >
-        {adding ? "Adding..." : "Add Provider"}
+        {adding ? "Agregando..." : "Agregar Proveedor"}
       </button>
     </div>
   );
@@ -817,7 +817,7 @@ function ApiKeyInput({
         className="text-xs block mb-1"
         style={{ color: "var(--text-secondary)" }}
       >
-        API Key <span style={{ color: "var(--text-muted)" }}>(optional)</span>
+        API Key <span style={{ color: "var(--text-muted)" }}>(opcional)</span>
       </label>
       <div className="relative">
         <input
@@ -827,14 +827,14 @@ function ApiKeyInput({
           onBlur={onBlur}
           className="w-full input-orbe px-3 py-2 pr-9 text-xs font-mono outline-none"
           style={{ color: "var(--text-primary)" }}
-          placeholder="sk-xxxx or leave empty"
+          placeholder="sk-xxxx o dejar vacío"
         />
         <button
           type="button"
           onClick={() => setShow(!show)}
           className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded"
           style={{ color: "var(--text-muted)" }}
-          aria-label={show ? "Hide API key" : "Show API key"}
+          aria-label={show ? "Ocultar API key" : "Mostrar API key"}
         >
           {show ? <EyeOff size={14} /> : <Eye size={14} />}
         </button>
