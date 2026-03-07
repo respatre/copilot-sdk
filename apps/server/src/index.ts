@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { initCopilot, stopCopilot } from "./copilot.js";
 import { requireAuth } from "./middleware/auth.js";
+import { agentRoutes } from "./routes/agents.js";
 import { authRoutes } from "./routes/auth.js";
 import { devflowAuthRoutes } from "./routes/devflow-auth.js";
 import { githubRoutes } from "./routes/github.js";
@@ -49,6 +50,7 @@ async function main(): Promise<void> {
   app.use("/api/github", githubRoutes(broadcast));
   app.use("/api/upload", uploadRoutes(broadcast));
   app.use("/api/projects", projectRoutes(broadcast));
+  app.use("/api/projects", agentRoutes());
   app.use("/api/models", modelRoutes());
   app.use("/api/settings", settingsRoutes());
 
