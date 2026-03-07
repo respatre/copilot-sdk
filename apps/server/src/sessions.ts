@@ -114,7 +114,30 @@ export async function resumeProject(
           dynamicBroadcast,
           meta.provider,
         );
-        const session = await client.resumeSession(meta.sessionId, config);
+
+        let session: import("@github/copilot-sdk").CopilotSession;
+        try {
+          session = await client.resumeSession(meta.sessionId, config);
+          console.log(
+            `[sessions] resumed session ${meta.sessionId} for project ${id}`,
+          );
+        } catch (resumeErr) {
+          // Session not found in CLI (e.g. after container restart) — create a new one
+          console.warn(
+            `[sessions] resume failed for ${meta.sessionId}, creating new session:`,
+            String(resumeErr),
+          );
+          session = await client.createSession(config);
+          meta.sessionId = session.sessionId;
+          await fs.writeFile(
+            path.join(meta.directory, ".devflow.json"),
+            JSON.stringify(meta, null, 2),
+          );
+          console.log(
+            `[sessions] new session ${session.sessionId} created for project ${id}`,
+          );
+        }
+
         wireSessionEvents(session, dynamicBroadcast);
         registry.set(id, { meta, session });
         return { meta, session };

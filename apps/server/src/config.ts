@@ -4,7 +4,7 @@ import type { AppConfig } from "./types.js";
 
 const CONFIG_PATH = path.resolve(
   process.env.PROJECTS_DIR || "./projects",
-  "../config.json",
+  "config.json",
 );
 
 const DEFAULT_CONFIG: AppConfig = {

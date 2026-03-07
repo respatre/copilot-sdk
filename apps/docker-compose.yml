@@ -12,5 +12,5 @@ services:
       - DEVFLOW_PASS=${DEVFLOW_PASS}
       - DEVFLOW_JWT_SECRET=${DEVFLOW_JWT_SECRET}
     volumes:
-      - ./projects:/app/projects
+      - ./projects:/app/server/projects
     restart: unless-stopped

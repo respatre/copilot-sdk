@@ -123,6 +123,14 @@ export function wireSessionEvents(
       case "session.idle":
         broadcast({ type: "session_idle" });
         break;
+
+      case "session.error":
+        broadcast({
+          type: "error",
+          message:
+            (event.data as { message?: string }).message ?? "Session error",
+        });
+        break;
     }
   });
 }
