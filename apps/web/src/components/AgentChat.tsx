@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowLeft, Loader2, Send } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Wifi, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AGENT_ROLES, type AgentMessage, type AgentNode } from "../lib/agents";
 import { getStoredToken } from "../lib/api";
+import MessageBubble from "./MessageBubble";
 
 interface AgentChatProps {
   agent: AgentNode;
@@ -20,7 +21,9 @@ export default function AgentChat({
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [thinking, setThinking] = useState(false);
   const [toolStatus, setToolStatus] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const streamBuf = useRef("");
@@ -28,80 +31,115 @@ export default function AgentChat({
 
   // Connect WS
   useEffect(() => {
-    const token = getStoredToken();
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${proto}//${window.location.host}/ws${tokenParam}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
 
-    ws.onmessage = (e) => {
-      const evt = JSON.parse(e.data);
-      switch (evt.type) {
-        case "message_delta":
-          streamBuf.current += evt.content ?? "";
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last?.role === "assistant" && last.streaming) {
+    function connect() {
+      if (disposed) return;
+
+      const token = getStoredToken();
+      const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${proto}//${window.location.host}/ws${tokenParam}`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setConnected(true);
+      };
+
+      ws.onmessage = (e) => {
+        const evt = JSON.parse(e.data);
+
+        // Filter: only process events for this project
+        if (evt.projectId && evt.projectId !== projectId) return;
+
+        switch (evt.type) {
+          case "message_delta":
+            setThinking(false);
+            streamBuf.current += evt.content ?? "";
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (last?.role === "assistant" && last.streaming) {
+                return [
+                  ...prev.slice(0, -1),
+                  { ...last, content: streamBuf.current },
+                ];
+              }
               return [
-                ...prev.slice(0, -1),
-                { ...last, content: streamBuf.current },
-              ];
-            }
-            return [
-              ...prev,
-              {
-                id: `a-${msgCounter.current}`,
-                role: "assistant",
-                content: streamBuf.current,
-                timestamp: Date.now(),
-                streaming: true,
-              },
-            ];
-          });
-          break;
-        case "message_complete":
-          setStreaming(false);
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last?.role === "assistant") {
-              return [
-                ...prev.slice(0, -1),
+                ...prev,
                 {
-                  ...last,
-                  content: evt.content ?? last.content,
-                  streaming: false,
+                  id: `a-${msgCounter.current}`,
+                  role: "assistant",
+                  content: streamBuf.current,
+                  timestamp: Date.now(),
+                  streaming: true,
                 },
               ];
-            }
-            return prev;
-          });
-          streamBuf.current = "";
-          break;
-        case "tool_start":
-          setToolStatus(evt.toolName ?? "working");
-          break;
-        case "tool_complete":
-        case "session_idle":
-          setToolStatus(null);
-          setStreaming(false);
-          break;
-        case "error":
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `e-${Date.now()}`,
-              role: "assistant",
-              content: `**Error:** ${evt.message}`,
-              timestamp: Date.now(),
-            },
-          ]);
-          setStreaming(false);
-          break;
-      }
-    };
+            });
+            break;
+          case "message_complete":
+            setStreaming(false);
+            setThinking(false);
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (last?.role === "assistant") {
+                return [
+                  ...prev.slice(0, -1),
+                  {
+                    ...last,
+                    content: evt.content ?? last.content,
+                    streaming: false,
+                  },
+                ];
+              }
+              return prev;
+            });
+            streamBuf.current = "";
+            break;
+          case "tool_start":
+            setThinking(false);
+            setToolStatus(evt.toolName ?? "working");
+            break;
+          case "tool_complete":
+            setToolStatus(null);
+            break;
+          case "session_idle":
+            setToolStatus(null);
+            setStreaming(false);
+            setThinking(false);
+            break;
+          case "error":
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `e-${Date.now()}`,
+                role: "assistant",
+                content: `**Error:** ${evt.message}`,
+                timestamp: Date.now(),
+              },
+            ]);
+            setStreaming(false);
+            setThinking(false);
+            break;
+        }
+      };
 
-    return () => ws.close();
+      ws.onclose = () => {
+        setConnected(false);
+        if (!disposed) {
+          reconnectTimer = setTimeout(connect, 2000);
+        }
+      };
+    }
+
+    connect();
+
+    return () => {
+      disposed = true;
+      clearTimeout(reconnectTimer);
+      wsRef.current?.close();
+    };
   }, [projectId, agent.id]);
 
   // Auto-scroll
@@ -110,7 +148,7 @@ export default function AgentChat({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages]);
+  }, [messages, thinking]);
 
   const send = useCallback(() => {
     const text = input.trim();
@@ -121,6 +159,7 @@ export default function AgentChat({
     streamBuf.current = "";
     setInput("");
     setStreaming(true);
+    setThinking(true);
 
     setMessages((prev) => [
       ...prev,
@@ -133,7 +172,7 @@ export default function AgentChat({
     ]);
 
     // Prepend agent context to the prompt so the backend uses the agent's system prompt
-    const agentPrompt = `[Agent: ${agent.name} | Role: ${agent.role}]\n\nSystem instructions for this agent:\n${agent.prompt}\n\n---\nUser message:\n${text}`;
+    const agentPrompt = `[Agent: ${agent.name} | Role: ${agent.role}]\n\n${agent.prompt}\n\n---\n${text}`;
     wsRef.current.send(
       JSON.stringify({ type: "chat", projectId, prompt: agentPrompt }),
     );
@@ -181,15 +220,22 @@ export default function AgentChat({
             {meta.label}
           </span>
         </div>
-        {toolStatus && (
-          <div
-            className="flex items-center gap-1 text-[10px]"
-            style={{ color: "var(--text-muted)" }}
-          >
-            <Loader2 size={10} className="animate-spin" />
-            {toolStatus}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {toolStatus && (
+            <div
+              className="flex items-center gap-1 text-[10px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <Loader2 size={10} className="animate-spin" />
+              <span className="max-w-[80px] truncate">{toolStatus}</span>
+            </div>
+          )}
+          {connected ? (
+            <Wifi size={12} style={{ color: "#22c55e" }} />
+          ) : (
+            <WifiOff size={12} style={{ color: "var(--red-500)" }} />
+          )}
+        </div>
       </header>
 
       {/* Messages */}
@@ -197,44 +243,71 @@ export default function AgentChat({
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-3 py-4 space-y-3"
       >
-        {messages.length === 0 && (
+        {messages.length === 0 && !thinking && (
           <div
             className="flex flex-col items-center justify-center h-full gap-2"
             style={{ color: "var(--text-muted)" }}
           >
             <span className="text-3xl">{meta.icon}</span>
-            <p className="text-xs text-center max-w-[200px]">
+            <p className="text-xs text-center max-w-[220px]">
               Inicia una conversación con{" "}
               <strong style={{ color: meta.color }}>{agent.name}</strong>
+            </p>
+            <p
+              className="text-[10px] text-center max-w-[200px] mt-1"
+              style={{ color: "var(--text-muted)", opacity: 0.6 }}
+            >
+              {meta.label} — escribe un mensaje para comenzar
             </p>
           </div>
         )}
         {messages.map((msg) => (
-          <div
+          <MessageBubble
             key={msg.id}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
+            role={msg.role}
+            content={msg.content}
+          />
+        ))}
+        {/* Thinking indicator — shows before first delta arrives */}
+        {thinking && (
+          <div className="flex justify-start animate-msg-in">
             <div
-              className="max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap"
-              style={
-                msg.role === "user"
-                  ? { background: "var(--gradient-sent)", color: "#fff" }
-                  : {
-                      background: "var(--bg-card)",
-                      color: "var(--text-primary)",
-                    }
-              }
+              className="px-4 py-3 rounded-2xl bubble-received flex items-center gap-2"
             >
-              {msg.content}
-              {msg.streaming && (
+              <div className="flex gap-1">
                 <span
-                  className="inline-block w-1.5 h-3 ml-0.5 rounded-sm animate-pulse"
-                  style={{ background: meta.color }}
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{
+                    background: meta.color,
+                    animation: "typing-bounce 1.2s ease infinite",
+                  }}
                 />
-              )}
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{
+                    background: meta.color,
+                    animation: "typing-bounce 1.2s ease infinite 0.2s",
+                  }}
+                />
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{
+                    background: meta.color,
+                    animation: "typing-bounce 1.2s ease infinite 0.4s",
+                  }}
+                />
+              </div>
+              <span
+                className="text-xs"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {toolStatus
+                  ? `Ejecutando ${toolStatus}...`
+                  : "Pensando..."}
+              </span>
             </div>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Input */}
@@ -255,10 +328,11 @@ export default function AgentChat({
               color: "var(--text-primary)",
               border: "1px solid var(--border-subtle)",
             }}
+            disabled={!connected}
           />
           <button
             onClick={send}
-            disabled={!input.trim() || streaming}
+            disabled={!input.trim() || streaming || !connected}
             className="p-2.5 rounded-xl transition-opacity disabled:opacity-30"
             style={{ background: meta.color }}
           >

@@ -1,11 +1,44 @@
 import type { Server } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
 import { verifyWsToken } from "./middleware/auth.js";
-import { getActiveSession, resumeProject } from "./sessions.js";
+import {
+  getActiveSession,
+  resumeProject,
+  setProjectBroadcast,
+} from "./sessions.js";
 import type { WsIncoming, WsOutgoing } from "./types.js";
 
 const clients = new Set<WebSocket>();
+const projectClients = new Map<string, Set<WebSocket>>();
 
+/** Subscribe a WebSocket client to receive events for a specific project */
+function subscribeToProject(ws: WebSocket, projectId: string): void {
+  if (!projectClients.has(projectId)) {
+    projectClients.set(projectId, new Set());
+  }
+  projectClients.get(projectId)!.add(ws);
+}
+
+/** Remove a WebSocket client from all project subscriptions */
+function unsubscribeAll(ws: WebSocket): void {
+  for (const [, subs] of projectClients) {
+    subs.delete(ws);
+  }
+}
+
+/** Send a message only to clients subscribed to a specific project */
+function broadcastToProject(projectId: string, msg: WsOutgoing): void {
+  const subs = projectClients.get(projectId);
+  if (!subs) return;
+  const payload = JSON.stringify({ ...msg, projectId });
+  for (const ws of subs) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(payload);
+    }
+  }
+}
+
+/** Global broadcast — used for file watcher events */
 export function broadcast(msg: WsOutgoing): void {
   const payload = JSON.stringify(msg);
   for (const ws of clients) {
@@ -44,6 +77,7 @@ export function setupWebSocket(server: Server): void {
 
     ws.on("close", () => {
       clients.delete(ws);
+      unsubscribeAll(ws);
       console.log("[ws] client disconnected —", clients.size, "total");
     });
   });
@@ -56,9 +90,17 @@ async function handleChat(
   projectId: string,
   prompt: string,
 ): Promise<void> {
+  // Subscribe this client to the project's events
+  subscribeToProject(ws, projectId);
+
+  // Route session events to subscribed clients only (not global broadcast)
+  setProjectBroadcast(projectId, (msg) =>
+    broadcastToProject(projectId, msg),
+  );
+
   const sendToClient = (msg: WsOutgoing) => {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(msg));
+      ws.send(JSON.stringify({ ...msg, projectId }));
     }
   };
 
@@ -66,7 +108,10 @@ async function handleChat(
     // Resume or get existing session
     let session = getActiveSession(projectId);
     if (!session) {
-      const entry = await resumeProject(projectId, sendToClient);
+      const entry = await resumeProject(
+        projectId,
+        (msg) => broadcastToProject(projectId, msg),
+      );
       session = entry.session;
     }
 

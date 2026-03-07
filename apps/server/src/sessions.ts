@@ -13,6 +13,25 @@ const registry = new Map<
   { meta: ProjectMeta; session: CopilotSession }
 >();
 
+// Dynamic broadcast: allows updating where session events go after creation
+const projectBroadcastFns = new Map<string, (msg: WsOutgoing) => void>();
+
+/** Update the broadcast function for a project (called by ws.ts when a client subscribes) */
+export function setProjectBroadcast(
+  projectId: string,
+  fn: (msg: WsOutgoing) => void,
+): void {
+  projectBroadcastFns.set(projectId, fn);
+}
+
+/** Returns a stable function that always delegates to the latest registered broadcast */
+function makeDynamicBroadcast(projectId: string): (msg: WsOutgoing) => void {
+  return (msg: WsOutgoing) => {
+    const fn = projectBroadcastFns.get(projectId);
+    if (fn) fn(msg);
+  };
+}
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -34,15 +53,20 @@ export async function createProject(
 
   await fs.mkdir(directory, { recursive: true });
 
+  // Use dynamic broadcast: initially delegates to the passed-in broadcast,
+  // but ws.ts can later switch it to project-scoped routing
+  setProjectBroadcast(id, broadcast);
+  const dynamicBroadcast = makeDynamicBroadcast(id);
+
   const config = await buildSessionConfig(
     directory,
     model,
-    broadcast,
+    dynamicBroadcast,
     providerName,
   );
   const session = await client.createSession(config);
 
-  wireSessionEvents(session, broadcast);
+  wireSessionEvents(session, dynamicBroadcast);
 
   const meta: ProjectMeta = {
     id,
@@ -81,14 +105,17 @@ export async function resumeProject(
       const meta: ProjectMeta = JSON.parse(raw);
       if (meta.id === id) {
         const client = getClient();
+        // Use dynamic broadcast so ws.ts can update routing later
+        setProjectBroadcast(id, broadcast);
+        const dynamicBroadcast = makeDynamicBroadcast(id);
         const config = await buildSessionConfig(
           meta.directory,
           meta.model,
-          broadcast,
+          dynamicBroadcast,
           meta.provider,
         );
         const session = await client.resumeSession(meta.sessionId, config);
-        wireSessionEvents(session, broadcast);
+        wireSessionEvents(session, dynamicBroadcast);
         registry.set(id, { meta, session });
         return { meta, session };
       }
