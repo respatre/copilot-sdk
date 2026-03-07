@@ -45,13 +45,16 @@ export function useFiles(projectId: string | null) {
     setFileContent("");
   }, []);
 
-  return useMemo(() => ({
-    files,
-    selectedFile,
-    fileContent,
-    loading,
-    refresh,
-    openFile,
-    closeFile,
-  }), [files, selectedFile, fileContent, loading, refresh, openFile, closeFile]);
+  return useMemo(
+    () => ({
+      files,
+      selectedFile,
+      fileContent,
+      loading,
+      refresh,
+      openFile,
+      closeFile,
+    }),
+    [files, selectedFile, fileContent, loading, refresh, openFile, closeFile],
+  );
 }
