@@ -7,7 +7,7 @@ import {
   Folder,
   FolderOpen,
 } from "lucide-react";
-import { useState } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import type { FileNode } from "../lib/api";
 
 interface Props {
@@ -21,6 +21,44 @@ export default function FileExplorer({
   onFileSelect,
   selectedFile,
 }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const items =
+      containerRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]');
+    if (!items?.length) return;
+
+    const current = document.activeElement as HTMLElement;
+    const idx = Array.from(items).indexOf(current);
+    if (idx === -1) return;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        items[Math.min(idx + 1, items.length - 1)]?.focus();
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        items[Math.max(idx - 1, 0)]?.focus();
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        // Expand directory or move to first child
+        current.click();
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        // Collapse directory or move to parent
+        current.click();
+        break;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        current.click();
+        break;
+    }
+  }, []);
+
   if (files.length === 0) {
     return (
       <div
@@ -41,8 +79,12 @@ export default function FileExplorer({
 
   return (
     <div
+      ref={containerRef}
       className="h-full overflow-y-auto px-2 py-3"
       style={{ background: "var(--bg-primary)" }}
+      role="tree"
+      aria-label="Project files"
+      onKeyDown={handleKeyDown}
     >
       {files.map((node) => (
         <TreeNode
@@ -57,7 +99,7 @@ export default function FileExplorer({
   );
 }
 
-function TreeNode({
+const TreeNode = memo(function TreeNode({
   node,
   depth,
   onSelect,
@@ -84,9 +126,14 @@ function TreeNode({
   const iconColor = getFileColor(ext);
 
   return (
-    <div>
+    <div
+      role="treeitem"
+      aria-expanded={isDir ? open : undefined}
+      aria-selected={isSelected}
+    >
       <button
         onClick={handleClick}
+        tabIndex={0}
         className="w-full flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm transition-colors"
         style={{
           paddingLeft: `${depth * 16 + 8}px`,
@@ -124,7 +171,7 @@ function TreeNode({
         ))}
     </div>
   );
-}
+});
 
 function getFileColor(ext: string): string {
   const colors: Record<string, string> = {

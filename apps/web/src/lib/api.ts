@@ -1,4 +1,83 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = "";
+
+// ── Auth token management ──
+
+const TOKEN_KEY = "devflow_token";
+
+export function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function storeToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getStoredToken();
+  if (token && token !== "none") {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
+
+/** Fetch with auth headers. Redirects to login on 401. */
+async function authedFetch(
+  url: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const headers = { ...authHeaders(), ...init?.headers };
+  const res = await fetch(url, { ...init, headers });
+  if (res.status === 401 && typeof window !== "undefined") {
+    clearToken();
+    window.location.href = "/";
+  }
+  return res;
+}
+
+// ── DevFlow login ──
+
+export async function devflowLogin(
+  user: string,
+  password: string,
+): Promise<{ token: string; authEnabled: boolean }> {
+  const res = await fetch(`${API_BASE}/api/devflow/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Login failed" }));
+    throw new Error(err.error || "Login failed");
+  }
+  const data = await res.json();
+  if (data.token) storeToken(data.token);
+  return data;
+}
+
+export async function checkDevflowAuth(): Promise<{
+  authEnabled: boolean;
+  loggedIn: boolean;
+}> {
+  try {
+    const res = await fetch(`${API_BASE}/api/devflow/auth-status`);
+    const data = await res.json();
+    if (!data.authEnabled) return { authEnabled: false, loggedIn: true };
+    // Check if stored token is valid
+    const token = getStoredToken();
+    if (!token) return { authEnabled: true, loggedIn: false };
+    const check = await fetch(`${API_BASE}/api/health`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return { authEnabled: true, loggedIn: check.ok };
+  } catch {
+    return { authEnabled: false, loggedIn: false };
+  }
+}
 
 export interface ProjectMeta {
   id: string;
@@ -24,7 +103,7 @@ export interface ModelInfo {
 }
 
 export async function fetchProjects(): Promise<ProjectMeta[]> {
-  const res = await fetch(`${API_BASE}/api/projects`);
+  const res = await authedFetch(`${API_BASE}/api/projects`);
   if (!res.ok) throw new Error("Failed to fetch projects");
   return res.json();
 }
@@ -34,7 +113,7 @@ export async function createProject(
   model: string,
   provider?: string,
 ): Promise<ProjectMeta> {
-  const res = await fetch(`${API_BASE}/api/projects`, {
+  const res = await authedFetch(`${API_BASE}/api/projects`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, model, provider }),
@@ -44,11 +123,11 @@ export async function createProject(
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  await fetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE" });
+  await authedFetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE" });
 }
 
 export async function fetchFiles(projectId: string): Promise<FileNode[]> {
-  const res = await fetch(`${API_BASE}/api/projects/${projectId}/files`);
+  const res = await authedFetch(`${API_BASE}/api/projects/${projectId}/files`);
   if (!res.ok) return [];
   return res.json();
 }
@@ -57,7 +136,7 @@ export async function fetchFileContent(
   projectId: string,
   filePath: string,
 ): Promise<string> {
-  const res = await fetch(
+  const res = await authedFetch(
     `${API_BASE}/api/projects/${projectId}/files/${filePath}`,
   );
   if (!res.ok) throw new Error("Failed to fetch file");
@@ -66,23 +145,12 @@ export async function fetchFileContent(
 
 export async function fetchModels(provider?: string): Promise<ModelInfo[]> {
   const qs = provider ? `?provider=${provider}` : "";
-  const res = await fetch(`${API_BASE}/api/models${qs}`);
+  const res = await authedFetch(`${API_BASE}/api/models${qs}`);
   if (!res.ok) return [];
   return res.json();
 }
 
-export function getWsUrl(): string {
-  if (API_BASE) {
-    return API_BASE.replace(/^http/, "ws") + "/ws";
-  }
-  const proto =
-    typeof window !== "undefined" && window.location.protocol === "https:"
-      ? "wss:"
-      : "ws:";
-  const host =
-    typeof window !== "undefined" ? window.location.host : "localhost:3001";
-  return `${proto}//${host}/ws`;
-}
+// getWsUrl removed — WS URL is now built at runtime in useChat.ts
 
 // Auth
 
@@ -95,12 +163,12 @@ export interface AuthStatus {
 }
 
 export async function fetchAuthStatus(): Promise<AuthStatus> {
-  const res = await fetch(`${API_BASE}/api/auth/status`);
+  const res = await authedFetch(`${API_BASE}/api/auth/status`);
   return res.json();
 }
 
 export async function submitToken(token: string): Promise<AuthStatus> {
-  const res = await fetch(`${API_BASE}/api/auth/token`, {
+  const res = await authedFetch(`${API_BASE}/api/auth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
@@ -110,7 +178,7 @@ export async function submitToken(token: string): Promise<AuthStatus> {
 }
 
 export async function logout(): Promise<void> {
-  await fetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
+  await authedFetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
 }
 
 // ── GitHub OAuth ──
@@ -139,25 +207,25 @@ export interface GitHubRepo {
 }
 
 export async function fetchGitHubStatus(): Promise<GitHubConnectionStatus> {
-  const res = await fetch(`${API_BASE}/api/github/status`);
+  const res = await authedFetch(`${API_BASE}/api/github/status`);
   return res.json();
 }
 
 export async function startGitHubOAuth(): Promise<{ url: string }> {
-  const res = await fetch(`${API_BASE}/api/github/oauth/start`);
+  const res = await authedFetch(`${API_BASE}/api/github/oauth/start`);
   if (!res.ok) throw new Error("Failed to start OAuth");
   return res.json();
 }
 
 export async function disconnectGitHub(): Promise<void> {
-  await fetch(`${API_BASE}/api/github/disconnect`, { method: "POST" });
+  await authedFetch(`${API_BASE}/api/github/disconnect`, { method: "POST" });
 }
 
 export async function fetchGitHubRepos(
   page = 1,
   sort = "updated",
 ): Promise<GitHubRepo[]> {
-  const res = await fetch(
+  const res = await authedFetch(
     `${API_BASE}/api/github/repos?page=${page}&sort=${sort}`,
   );
   if (!res.ok) return [];
@@ -168,7 +236,7 @@ export async function cloneGitHubRepo(
   repoFullName: string,
   branch?: string,
 ): Promise<ProjectMeta> {
-  const res = await fetch(`${API_BASE}/api/github/clone`, {
+  const res = await authedFetch(`${API_BASE}/api/github/clone`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ repoFullName, branch }),
@@ -190,7 +258,7 @@ export async function uploadZip(
   form.append("file", file);
   if (name) form.append("name", name);
 
-  const res = await fetch(`${API_BASE}/api/upload/zip`, {
+  const res = await authedFetch(`${API_BASE}/api/upload/zip`, {
     method: "POST",
     body: form,
   });
@@ -217,7 +285,7 @@ export async function uploadFiles(
     }
   }
 
-  const res = await fetch(`${API_BASE}/api/upload/files`, {
+  const res = await authedFetch(`${API_BASE}/api/upload/files`, {
     method: "POST",
     body: form,
   });
@@ -244,7 +312,7 @@ export interface AppSettings {
 }
 
 export async function fetchSettings(): Promise<AppSettings> {
-  const res = await fetch(`${API_BASE}/api/settings`);
+  const res = await authedFetch(`${API_BASE}/api/settings`);
   if (!res.ok) throw new Error("Failed to fetch settings");
   return res.json();
 }
@@ -252,7 +320,7 @@ export async function fetchSettings(): Promise<AppSettings> {
 export async function saveSettings(
   settings: Partial<AppSettings>,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/settings`, {
+  const res = await authedFetch(`${API_BASE}/api/settings`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(settings),
@@ -263,7 +331,7 @@ export async function saveSettings(
 export async function testProvider(
   name: string,
 ): Promise<{ ok: boolean; error?: string; message?: string }> {
-  const res = await fetch(
+  const res = await authedFetch(
     `${API_BASE}/api/settings/providers/${encodeURIComponent(name)}/test`,
     { method: "POST" },
   );
@@ -274,7 +342,7 @@ export async function addProvider(
   name: string,
   config: ProviderConfig,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await authedFetch(
     `${API_BASE}/api/settings/providers/${encodeURIComponent(name)}`,
     {
       method: "POST",
@@ -286,7 +354,7 @@ export async function addProvider(
 }
 
 export async function removeProvider(name: string): Promise<void> {
-  const res = await fetch(
+  const res = await authedFetch(
     `${API_BASE}/api/settings/providers/${encodeURIComponent(name)}`,
     { method: "DELETE" },
   );
@@ -296,7 +364,7 @@ export async function removeProvider(name: string): Promise<void> {
 export async function fetchProviderModels(
   providerName: string,
 ): Promise<ModelInfo[]> {
-  const res = await fetch(
+  const res = await authedFetch(
     `${API_BASE}/api/settings/providers/${encodeURIComponent(providerName)}/models`,
   );
   if (!res.ok) return [];

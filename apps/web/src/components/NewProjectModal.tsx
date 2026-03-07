@@ -11,7 +11,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   cloneGitHubRepo,
   disconnectGitHub,
@@ -53,8 +53,28 @@ export default function NewProjectModal({
 }: Props) {
   const [tab, setTab] = useState<SourceTab>("new");
 
+  // Close on ESC
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onCancel]);
+
+  // Close on backdrop click
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) onCancel();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center backdrop-blur-sm">
+    <div
+      className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-project-title"
+      onClick={handleBackdropClick}
+    >
       <div
         className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-5 space-y-4 safe-bottom glass max-h-[85vh] flex flex-col"
         style={{ background: "var(--bg-secondary)" }}
@@ -62,6 +82,7 @@ export default function NewProjectModal({
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2
+            id="new-project-title"
             className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
@@ -71,6 +92,7 @@ export default function NewProjectModal({
             onClick={onCancel}
             className="p-1.5 rounded-lg"
             style={{ color: "var(--text-muted)" }}
+            aria-label="Close"
           >
             <X size={18} />
           </button>
@@ -279,9 +301,20 @@ function GitHubTab({
   const [ghStatus, setGhStatus] = useState<GitHubConnectionStatus | null>(null);
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const [loading, setLoading] = useState(false);
   const [cloning, setCloning] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  // Debounce search input
+  useEffect(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [search]);
 
   // Check connection status
   useEffect(() => {
@@ -375,8 +408,10 @@ function GitHubTab({
   // Connected — show repos
   const filtered = repos.filter(
     (r) =>
-      r.name.toLowerCase().includes(search.toLowerCase()) ||
-      (r.description || "").toLowerCase().includes(search.toLowerCase()),
+      r.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (r.description || "")
+        .toLowerCase()
+        .includes(debouncedSearch.toLowerCase()),
   );
 
   return (

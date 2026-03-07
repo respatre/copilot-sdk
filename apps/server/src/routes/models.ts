@@ -56,7 +56,8 @@ export function modelRoutes(): Router {
       const models = await getClient().listModels();
       res.json(models);
     } catch (err) {
-      res.status(500).json({ error: String(err) });
+      console.error("[models] error:", err);
+      res.json([]);
     }
   });
 

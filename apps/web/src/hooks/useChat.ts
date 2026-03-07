@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getWsUrl } from "../lib/api";
+import { getStoredToken } from "../lib/api";
 
 export interface ChatMessage {
   id: string;
@@ -14,6 +14,12 @@ export interface ToolActivity {
   toolName: string;
   status: "running" | "done";
 }
+
+export type ConnectionStatus =
+  | "connecting"
+  | "connected"
+  | "disconnected"
+  | "reconnecting";
 
 interface WsEvent {
   type: string;
@@ -30,13 +36,29 @@ export function useChat(projectId: string | null) {
   const [streaming, setStreaming] = useState(false);
   const [tool, setTool] = useState<ToolActivity | null>(null);
   const [fileEvents, setFileEvents] = useState<WsEvent[]>([]);
+  const [connectionStatus, setConnectionStatus] =
+    useState<ConnectionStatus>("disconnected");
   const streamingRef = useRef("");
   const msgIdRef = useRef(0);
+  const reconnectCountRef = useRef(0);
 
   const connect = useCallback(() => {
     if (!projectId) return;
-    const ws = new WebSocket(getWsUrl());
+
+    const isReconnect = reconnectCountRef.current > 0;
+    setConnectionStatus(isReconnect ? "reconnecting" : "connecting");
+
+    const token = getStoredToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = proto + "//" + window.location.host + "/ws" + tokenParam;
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
+
+    ws.onopen = () => {
+      setConnectionStatus("connected");
+      reconnectCountRef.current = 0;
+    };
 
     ws.onmessage = (e) => {
       const evt: WsEvent = JSON.parse(e.data);
@@ -118,6 +140,8 @@ export function useChat(projectId: string | null) {
     };
 
     ws.onclose = () => {
+      setConnectionStatus("disconnected");
+      reconnectCountRef.current++;
       setTimeout(connect, 2000);
     };
 
@@ -164,6 +188,7 @@ export function useChat(projectId: string | null) {
     streaming,
     tool,
     fileEvents,
+    connectionStatus,
     sendMessage,
     clearFileEvents,
   };

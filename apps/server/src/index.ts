@@ -4,7 +4,9 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { initCopilot, stopCopilot } from "./copilot.js";
+import { requireAuth } from "./middleware/auth.js";
 import { authRoutes } from "./routes/auth.js";
+import { devflowAuthRoutes } from "./routes/devflow-auth.js";
 import { githubRoutes } from "./routes/github.js";
 import { modelRoutes } from "./routes/models.js";
 import { projectRoutes } from "./routes/projects.js";
@@ -27,6 +29,16 @@ async function main(): Promise<void> {
   app.use(cors());
   app.use(express.json());
 
+  // DevFlow auth (login route — public)
+  app.use("/api/devflow", devflowAuthRoutes());
+
+  // Serve static frontend (public — auth is handled client-side)
+  const staticDir = path.join(__dirname, "../../web/out");
+  app.use(express.static(staticDir));
+
+  // Auth middleware — protects all API routes below
+  app.use("/api", requireAuth);
+
   // API routes
   app.use("/api/auth", authRoutes());
   app.use("/api/github", githubRoutes(broadcast));
@@ -40,9 +52,7 @@ async function main(): Promise<void> {
     res.json({ status: "ok", timestamp: Date.now() });
   });
 
-  // Serve static frontend in production
-  const staticDir = path.join(__dirname, "../../web/out");
-  app.use(express.static(staticDir));
+  // SPA fallback — serves index.html for all non-API routes
   app.get("{*path}", (_req, res) => {
     res.sendFile(path.join(staticDir, "index.html"), (err) => {
       if (err) res.status(404).json({ error: "Not found" });

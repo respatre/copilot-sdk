@@ -258,3 +258,13 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ─── Hover effects (enhanced) ─── */
+.hover\:border-\[var\(--purple-400\)\]\/40:hover {
+  border-color: rgba(192, 132, 252, 0.4) !important;
+  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.1);
+}
+
+.hover\:bg-\[var\(--bg-hover\)\]:hover {
+  background: var(--bg-hover) !important;
+}

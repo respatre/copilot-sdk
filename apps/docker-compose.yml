@@ -8,6 +8,9 @@ services:
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - PORT=3001
+      - DEVFLOW_USER=${DEVFLOW_USER:-admin}
+      - DEVFLOW_PASS=${DEVFLOW_PASS}
+      - DEVFLOW_JWT_SECRET=${DEVFLOW_JWT_SECRET}
     volumes:
       - ./projects:/app/projects
     restart: unless-stopped

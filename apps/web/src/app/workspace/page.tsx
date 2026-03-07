@@ -1,15 +1,56 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Wifi, WifiOff } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import BottomNav, { type TabId } from "../../components/BottomNav";
 import ChatPanel from "../../components/ChatPanel";
 import CodeViewer from "../../components/CodeViewer";
 import FileExplorer from "../../components/FileExplorer";
-import { useChat } from "../../hooks/useChat";
+import { useChat, type ConnectionStatus } from "../../hooks/useChat";
 import { useFiles } from "../../hooks/useFiles";
 import { fetchProjects, type ProjectMeta } from "../../lib/api";
+
+/* ─── Connection status pill ─── */
+function ConnectionPill({ status }: { status: ConnectionStatus }) {
+  if (status === "connected") return null;
+  const config: Record<
+    Exclude<ConnectionStatus, "connected">,
+    { color: string; bg: string; label: string }
+  > = {
+    connecting: {
+      color: "#facc15",
+      bg: "rgba(250, 204, 21, 0.1)",
+      label: "Connecting...",
+    },
+    reconnecting: {
+      color: "#facc15",
+      bg: "rgba(250, 204, 21, 0.1)",
+      label: "Reconnecting...",
+    },
+    disconnected: {
+      color: "var(--red-500)",
+      bg: "rgba(239, 68, 68, 0.1)",
+      label: "Disconnected",
+    },
+  };
+  const c = config[status];
+  return (
+    <div
+      className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium"
+      style={{ color: c.color, background: c.bg }}
+      role="status"
+      aria-live="polite"
+    >
+      {status === "disconnected" ? (
+        <WifiOff size={10} />
+      ) : (
+        <Wifi size={10} className="animate-pulse" />
+      )}
+      {c.label}
+    </div>
+  );
+}
 
 function WorkspaceContent() {
   const searchParams = useSearchParams();
@@ -25,6 +66,7 @@ function WorkspaceContent() {
     streaming,
     tool,
     fileEvents,
+    connectionStatus,
     sendMessage,
     clearFileEvents,
   } = useChat(projectId);
@@ -95,10 +137,11 @@ function WorkspaceContent() {
           onClick={() => router.push("/")}
           className="p-1.5 rounded-lg transition-colors"
           style={{ color: "var(--text-muted)" }}
+          aria-label="Back to projects"
         >
           <ArrowLeft size={18} />
         </button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1
             className="text-sm font-semibold truncate"
             style={{ color: "var(--text-primary)" }}
@@ -112,6 +155,7 @@ function WorkspaceContent() {
             {project?.model ?? ""}
           </p>
         </div>
+        <ConnectionPill status={connectionStatus} />
       </header>
 
       <main className="flex-1 overflow-hidden pb-14">

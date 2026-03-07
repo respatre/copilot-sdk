@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchFileContent, fetchFiles, type FileNode } from "../lib/api";
 
 export function useFiles(projectId: string | null) {
@@ -45,7 +45,7 @@ export function useFiles(projectId: string | null) {
     setFileContent("");
   }, []);
 
-  return {
+  return useMemo(() => ({
     files,
     selectedFile,
     fileContent,
@@ -53,5 +53,5 @@ export function useFiles(projectId: string | null) {
     refresh,
     openFile,
     closeFile,
-  };
+  }), [files, selectedFile, fileContent, loading, refresh, openFile, closeFile]);
 }

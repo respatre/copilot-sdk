@@ -1,23 +1,23 @@
 "use client";
 
-import { Github, LogOut, Plus, Settings, Zap } from "lucide-react";
+import { LogOut, Plus, Settings, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import NewProjectModal from "../components/NewProjectModal";
 import ProjectCard from "../components/ProjectCard";
+import { SkeletonProjectCard } from "../components/Skeleton";
 import {
   type AppSettings,
-  type AuthStatus,
+  checkDevflowAuth,
+  clearToken,
   createProject,
   deleteProject,
-  fetchAuthStatus,
+  devflowLogin,
   fetchModels,
   fetchProjects,
   fetchSettings,
-  logout,
   type ModelInfo,
   type ProjectMeta,
-  submitToken,
 } from "../lib/api";
 
 export default function HomePage() {
@@ -29,21 +29,26 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   // Auth state
-  const [auth, setAuth] = useState<AuthStatus | null>(null);
-  const [tokenInput, setTokenInput] = useState("");
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  const [userInput, setUserInput] = useState("");
+  const [passInput, setPassInput] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
 
   // Check auth on mount
   useEffect(() => {
-    fetchAuthStatus()
-      .then((s) => setAuth(s))
-      .catch(() => setAuth({ isAuthenticated: false }));
+    checkDevflowAuth().then((s) => {
+      if (!s.authEnabled || s.loggedIn) {
+        setLoggedIn(true);
+      } else {
+        setLoggedIn(false);
+      }
+    });
   }, []);
 
   // Load data after authenticated
   useEffect(() => {
-    if (!auth?.isAuthenticated) return;
+    if (!loggedIn) return;
     Promise.all([
       fetchProjects()
         .then(setProjects)
@@ -55,30 +60,25 @@ export default function HomePage() {
         .then(setSettings)
         .catch(() => {}),
     ]).finally(() => setLoading(false));
-  }, [auth?.isAuthenticated]);
+  }, [loggedIn]);
 
   const handleLogin = async () => {
-    if (!tokenInput.trim()) return;
+    if (!userInput.trim() || !passInput.trim()) return;
     setAuthLoading(true);
     setAuthError("");
     try {
-      const status = await submitToken(tokenInput.trim());
-      if (status.isAuthenticated) {
-        setAuth(status);
-        setTokenInput("");
-      } else {
-        setAuthError(status.statusMessage || "Authentication failed");
-      }
-    } catch {
-      setAuthError("Could not connect to server");
+      await devflowLogin(userInput.trim(), passInput.trim());
+      setLoggedIn(true);
+    } catch (err) {
+      setAuthError(String(err).replace("Error: ", ""));
     } finally {
       setAuthLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    setAuth({ isAuthenticated: false });
+  const handleLogout = () => {
+    clearToken();
+    setLoggedIn(false);
     setProjects([]);
     setModels([]);
   };
@@ -113,7 +113,7 @@ export default function HomePage() {
       style={{ background: "var(--bg-primary)" }}
     >
       {/* ─── Login Screen ─── */}
-      {auth && !auth.isAuthenticated ? (
+      {loggedIn === false ? (
         <div className="flex-1 flex flex-col items-center justify-center px-6 relative overflow-hidden">
           {/* Floating orbs */}
           <div className="orb orb-purple" />
@@ -139,7 +139,7 @@ export default function HomePage() {
               </div>
               <h1 className="text-3xl font-bold gradient-text">DevFlow</h1>
               <p style={{ color: "var(--text-secondary)" }} className="text-sm">
-                Sign in with your GitHub account to start building
+                Sign in to start building
               </p>
             </div>
 
@@ -150,15 +150,34 @@ export default function HomePage() {
                   className="text-xs block mb-1.5 font-medium"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  GitHub Personal Access Token
+                  User
+                </label>
+                <input
+                  type="text"
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  placeholder="admin"
+                  autoComplete="username"
+                  className="w-full input-orbe px-4 py-3 text-sm outline-none"
+                  style={{ color: "var(--text-primary)" }}
+                />
+              </div>
+              <div>
+                <label
+                  className="text-xs block mb-1.5 font-medium"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Password
                 </label>
                 <input
                   type="password"
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
+                  value={passInput}
+                  onChange={(e) => setPassInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                  placeholder="github_pat_xxxxxxxxxxxx"
-                  className="w-full input-orbe px-4 py-3 text-sm outline-none font-mono"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  className="w-full input-orbe px-4 py-3 text-sm outline-none"
                   style={{ color: "var(--text-primary)" }}
                 />
               </div>
@@ -171,28 +190,16 @@ export default function HomePage() {
 
               <button
                 onClick={handleLogin}
-                disabled={!tokenInput.trim() || authLoading}
+                disabled={!userInput.trim() || !passInput.trim() || authLoading}
                 className="w-full py-3 rounded-2xl text-sm font-semibold text-white flex items-center justify-center gap-2 gradient-btn disabled:opacity-40 disabled:pointer-events-none"
               >
-                <Github size={16} />
-                {authLoading ? "Connecting..." : "Sign in with Token"}
+                <Zap size={16} />
+                {authLoading ? "Connecting..." : "Sign in"}
               </button>
             </div>
-
-            <p
-              className="text-[11px] text-center leading-relaxed"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Create a token at GitHub → Settings → Developer settings →
-              Personal access tokens. Needs{" "}
-              <strong style={{ color: "var(--text-secondary)" }}>
-                copilot
-              </strong>{" "}
-              scope.
-            </p>
           </div>
         </div>
-      ) : (
+      ) : loggedIn ? (
         <>
           {/* ─── Header ─── */}
           <header className="glass-header sticky top-0 z-40 px-4 pt-12 pb-4">
@@ -201,32 +208,24 @@ export default function HomePage() {
                 <Zap size={22} style={{ color: "var(--purple-400)" }} />
                 <h1 className="text-xl font-bold gradient-text">DevFlow</h1>
               </div>
-              {auth?.login && (
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-xs"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    {auth.login}
-                  </span>
-                  <button
-                    onClick={() => router.push("/settings")}
-                    className="p-1.5 rounded-lg transition-colors"
-                    style={{ color: "var(--text-muted)" }}
-                    title="Settings"
-                  >
-                    <Settings size={14} />
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="p-1.5 rounded-lg transition-colors"
-                    style={{ color: "var(--text-muted)" }}
-                    title="Sign out"
-                  >
-                    <LogOut size={14} />
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => router.push("/settings")}
+                  className="p-1.5 rounded-lg transition-colors"
+                  style={{ color: "var(--text-muted)" }}
+                  aria-label="Settings"
+                >
+                  <Settings size={14} />
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="p-1.5 rounded-lg transition-colors"
+                  style={{ color: "var(--text-muted)" }}
+                  aria-label="Sign out"
+                >
+                  <LogOut size={14} />
+                </button>
+              </div>
             </div>
             <p
               className="text-sm mt-1"
@@ -239,11 +238,10 @@ export default function HomePage() {
           {/* ─── Project list ─── */}
           <main className="flex-1 px-4 pb-24 space-y-3 mt-2">
             {loading ? (
-              <div
-                className="text-sm text-center mt-12"
-                style={{ color: "var(--text-muted)" }}
-              >
-                Loading projects...
+              <div className="space-y-3 mt-2">
+                <SkeletonProjectCard />
+                <SkeletonProjectCard />
+                <SkeletonProjectCard />
               </div>
             ) : projects.length === 0 && !showNew ? (
               <div className="text-center mt-16 space-y-4">
@@ -285,11 +283,21 @@ export default function HomePage() {
               onClick={() => setShowNew(true)}
               className="fixed bottom-6 right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform z-40 gradient-btn"
               style={{ boxShadow: "0 8px 30px rgba(168, 85, 247, 0.35)" }}
+              aria-label="Create new project"
             >
               <Plus size={24} className="text-white" />
             </button>
           )}
         </>
+      ) : (
+        /* Loading state */
+        <div className="flex-1 flex items-center justify-center">
+          <Zap
+            size={32}
+            className="animate-pulse"
+            style={{ color: "var(--purple-400)" }}
+          />
+        </div>
       )}
     </div>
   );

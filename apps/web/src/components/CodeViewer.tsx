@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, X } from "lucide-react";
+import { Check, Copy, MessageSquare, X } from "lucide-react";
 import Prism from "prismjs";
 import "prismjs/components/prism-bash";
 import "prismjs/components/prism-css";
@@ -14,7 +14,7 @@ import "prismjs/components/prism-sql";
 import "prismjs/components/prism-tsx";
 import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-yaml";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Props {
   filePath: string;
@@ -50,6 +50,7 @@ export default function CodeViewer({
   onRequestChange,
 }: Props) {
   const codeRef = useRef<HTMLElement>(null);
+  const [copied, setCopied] = useState(false);
 
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
   const lang = EXT_TO_LANG[ext] ?? "plaintext";
@@ -59,6 +60,12 @@ export default function CodeViewer({
       Prism.highlightElement(codeRef.current);
     }
   }, [content, lang]);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   if (loading) {
     return (
@@ -71,6 +78,17 @@ export default function CodeViewer({
     );
   }
 
+  if (!content) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center h-full text-sm gap-2"
+        style={{ color: "var(--text-muted)" }}
+      >
+        <p>Empty file</p>
+      </div>
+    );
+  }
+
   const fileName = filePath.split("/").pop() ?? filePath;
   const lines = content.split("\n");
 
@@ -78,6 +96,8 @@ export default function CodeViewer({
     <div
       className="flex flex-col h-full"
       style={{ background: "var(--bg-primary)" }}
+      role="region"
+      aria-label={`Code viewer: ${fileName}`}
     >
       {/* Header */}
       <div
@@ -97,10 +117,18 @@ export default function CodeViewer({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
+            onClick={handleCopy}
+            className="p-1.5 rounded transition-colors"
+            style={{ color: copied ? "#22c55e" : "var(--text-muted)" }}
+            aria-label={copied ? "Copied" : "Copy file contents"}
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+          </button>
+          <button
             onClick={() => onRequestChange(filePath)}
             className="p-1.5 rounded transition-colors"
             style={{ color: "var(--text-muted)" }}
-            title="Request change in chat"
+            aria-label="Request change in chat"
           >
             <MessageSquare size={14} />
           </button>
@@ -108,6 +136,7 @@ export default function CodeViewer({
             onClick={onClose}
             className="p-1.5 rounded transition-colors"
             style={{ color: "var(--text-muted)" }}
+            aria-label="Close file"
           >
             <X size={14} />
           </button>

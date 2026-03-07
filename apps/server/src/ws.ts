@@ -1,5 +1,6 @@
 import type { Server } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
+import { verifyWsToken } from "./middleware/auth.js";
 import { getActiveSession, resumeProject } from "./sessions.js";
 import type { WsIncoming, WsOutgoing } from "./types.js";
 
@@ -17,7 +18,13 @@ export function broadcast(msg: WsOutgoing): void {
 export function setupWebSocket(server: Server): void {
   const wss = new WebSocketServer({ server, path: "/ws" });
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws, req) => {
+    // Verify auth token on WebSocket upgrade
+    if (!verifyWsToken(req.url || "")) {
+      ws.close(4001, "Unauthorized");
+      return;
+    }
+
     clients.add(ws);
     console.log("[ws] client connected —", clients.size, "total");
 

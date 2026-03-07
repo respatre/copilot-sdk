@@ -16,6 +16,9 @@ export default function ToolIndicator({ tool }: Props) {
         borderBottom: "1px solid var(--border-subtle)",
         color: "var(--text-secondary)",
       }}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
       {tool.status === "running" ? (
         <Loader2

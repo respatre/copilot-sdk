@@ -3,5 +3,5 @@ credentials-file: /home/trefactory/.cloudflared/37091b5a-ef8c-46c3-b226-93c33cfa
 
 ingress:
   - hostname: dev.codigo13.com
-    service: http://localhost:3000
+    service: http://localhost:3001
   - service: http_status:404

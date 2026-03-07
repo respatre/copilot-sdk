@@ -5,7 +5,12 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Eye,
+  EyeOff,
+  Github,
+  LinkIcon,
   Loader2,
+  LogOut,
   Plus,
   Server,
   Trash2,
@@ -17,11 +22,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   addProvider,
+  fetchAuthStatus,
   fetchSettings,
+  logout,
   removeProvider,
   saveSettings,
+  submitToken,
   testProvider,
   type AppSettings,
+  type AuthStatus,
   type ProviderConfig,
 } from "../../lib/api";
 
@@ -43,6 +52,13 @@ export default function SettingsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState("");
 
+  // GitHub Copilot token state
+  const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+  const [tokenInput, setTokenInput] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenExpanded, setTokenExpanded] = useState(false);
+
   useEffect(() => {
     fetchSettings()
       .then((s) => {
@@ -58,7 +74,38 @@ export default function SettingsPage() {
         setProviderStates(states);
       })
       .catch(() => setError("Failed to load settings"));
+
+    fetchAuthStatus()
+      .then(setAuthStatus)
+      .catch(() => setAuthStatus({ isAuthenticated: false }));
   }, []);
+
+  const handleSaveToken = async () => {
+    if (!tokenInput.trim()) return;
+    setTokenLoading(true);
+    setError("");
+    try {
+      const status = await submitToken(tokenInput.trim());
+      setAuthStatus(status);
+      if (status.isAuthenticated) setTokenInput("");
+    } catch {
+      setError("No se pudo conectar con ese token");
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
+  const handleDisconnectToken = async () => {
+    setTokenLoading(true);
+    try {
+      await logout();
+      setAuthStatus({ isAuthenticated: false });
+    } catch {
+      setError("Error al desconectar");
+    } finally {
+      setTokenLoading(false);
+    }
+  };
 
   const handleTest = async (name: string) => {
     setProviderStates((prev) => ({
@@ -179,6 +226,7 @@ export default function SettingsPage() {
             onClick={() => router.back()}
             className="p-1.5 rounded-lg"
             style={{ color: "var(--text-muted)" }}
+            aria-label="Go back"
           >
             <ArrowLeft size={20} />
           </button>
@@ -200,6 +248,160 @@ export default function SettingsPage() {
             {error}
           </div>
         )}
+
+        {/* Section: GitHub Copilot Token */}
+        <section>
+          <h2
+            className="text-xs font-semibold uppercase tracking-wider mb-3"
+            style={{ color: "var(--text-muted)" }}
+          >
+            GitHub Copilot
+          </h2>
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: "var(--bg-card)",
+              border: authStatus?.isAuthenticated
+                ? "1px solid #22c55e"
+                : "1px solid var(--border-subtle)",
+            }}
+          >
+            {/* Card header */}
+            <div
+              className="flex items-center gap-3 p-4 cursor-pointer"
+              onClick={() => setTokenExpanded(!tokenExpanded)}
+            >
+              <Github
+                size={18}
+                style={{
+                  color: authStatus?.isAuthenticated
+                    ? "#22c55e"
+                    : "var(--text-muted)",
+                }}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="font-medium text-sm"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {authStatus?.isAuthenticated
+                      ? `Conectado como ${authStatus.login || "user"}`
+                      : "No conectado"}
+                  </span>
+                  {authStatus?.isAuthenticated && (
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                      style={{ background: "#22c55e", color: "#fff" }}
+                    >
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
+                <span
+                  className="text-xs block truncate"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {authStatus?.isAuthenticated
+                    ? `${authStatus.authType || "token"} · ${authStatus.host || "github.com"}`
+                    : "Configura tu token GitHub (PAT) para usar Copilot SDK"}
+                </span>
+              </div>
+              {authStatus?.isAuthenticated ? (
+                <Wifi size={16} style={{ color: "#22c55e" }} />
+              ) : (
+                <WifiOff size={16} style={{ color: "var(--red-500)" }} />
+              )}
+              {tokenExpanded ? (
+                <ChevronUp size={16} style={{ color: "var(--text-muted)" }} />
+              ) : (
+                <ChevronDown size={16} style={{ color: "var(--text-muted)" }} />
+              )}
+            </div>
+
+            {/* Expanded */}
+            {tokenExpanded && (
+              <div
+                className="px-4 pb-4 space-y-3 border-t"
+                style={{ borderColor: "var(--border-subtle)" }}
+              >
+                <div className="pt-3">
+                  <label
+                    className="text-xs block mb-1"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    GitHub Personal Access Token
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showToken ? "text" : "password"}
+                      value={tokenInput}
+                      onChange={(e) => setTokenInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSaveToken()}
+                      className="w-full input-orbe px-3 py-2 pr-9 text-xs font-mono outline-none"
+                      style={{ color: "var(--text-primary)" }}
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowToken(!showToken)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                  <p
+                    className="text-[10px] mt-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Genera uno en{" "}
+                    <a
+                      href="https://github.com/settings/tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                      style={{ color: "var(--purple-400)" }}
+                    >
+                      github.com/settings/tokens
+                    </a>{" "}
+                    con scope <code className="text-[10px]">copilot</code>
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSaveToken}
+                    disabled={!tokenInput.trim() || tokenLoading}
+                    className="flex-1 py-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 gradient-btn text-white disabled:opacity-40"
+                  >
+                    {tokenLoading ? (
+                      <Loader2 className="animate-spin" size={14} />
+                    ) : (
+                      <LinkIcon size={14} />
+                    )}
+                    Conectar
+                  </button>
+
+                  {authStatus?.isAuthenticated && (
+                    <button
+                      onClick={handleDisconnectToken}
+                      disabled={tokenLoading}
+                      className="py-2 px-4 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+                      style={{
+                        background: "var(--bg-input)",
+                        color: "var(--red-500)",
+                      }}
+                    >
+                      <LogOut size={14} />
+                      Desconectar
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Section: AI Providers */}
         <section>
@@ -327,32 +529,13 @@ export default function SettingsPage() {
 
                       {/* API Key (optional) */}
                       {name !== "copilot" && (
-                        <div>
-                          <label
-                            className="text-xs block mb-1"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            API Key{" "}
-                            <span style={{ color: "var(--text-muted)" }}>
-                              (optional)
-                            </span>
-                          </label>
-                          <input
-                            type="password"
-                            value={prov.apiKey || ""}
-                            onChange={(e) =>
-                              handleUpdateProvider(
-                                name,
-                                "apiKey",
-                                e.target.value,
-                              )
-                            }
-                            onBlur={() => handleSaveProvider(name)}
-                            className="w-full input-orbe px-3 py-2 text-xs font-mono outline-none"
-                            style={{ color: "var(--text-primary)" }}
-                            placeholder="sk-xxxx or leave empty"
-                          />
-                        </div>
+                        <ApiKeyInput
+                          value={prov.apiKey || ""}
+                          onChange={(val) =>
+                            handleUpdateProvider(name, "apiKey", val)
+                          }
+                          onBlur={() => handleSaveProvider(name)}
+                        />
                       )}
 
                       {/* Test message */}
@@ -612,6 +795,50 @@ function AddProviderForm({
       >
         {adding ? "Adding..." : "Add Provider"}
       </button>
+    </div>
+  );
+}
+
+// ─── API Key Input with show/hide toggle ───
+
+function ApiKeyInput({
+  value,
+  onChange,
+  onBlur,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  onBlur: () => void;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div>
+      <label
+        className="text-xs block mb-1"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        API Key <span style={{ color: "var(--text-muted)" }}>(optional)</span>
+      </label>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          className="w-full input-orbe px-3 py-2 pr-9 text-xs font-mono outline-none"
+          style={{ color: "var(--text-primary)" }}
+          placeholder="sk-xxxx or leave empty"
+        />
+        <button
+          type="button"
+          onClick={() => setShow(!show)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded"
+          style={{ color: "var(--text-muted)" }}
+          aria-label={show ? "Hide API key" : "Show API key"}
+        >
+          {show ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
     </div>
   );
 }

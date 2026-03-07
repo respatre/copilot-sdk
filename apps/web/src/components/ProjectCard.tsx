@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock, Server, Trash2 } from "lucide-react";
+import { memo } from "react";
 import type { ProjectMeta } from "../lib/api";
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
-export default function ProjectCard({ project, onOpen, onDelete }: Props) {
+export default memo(function ProjectCard({ project, onOpen, onDelete }: Props) {
   const date = new Date(project.createdAt);
   const timeAgo = formatTimeAgo(date);
   const providerLabel = project.provider || "copilot";
@@ -17,7 +18,15 @@ export default function ProjectCard({ project, onOpen, onDelete }: Props) {
   return (
     <div
       onClick={() => onOpen(project.id)}
-      className="rounded-2xl p-4 cursor-pointer transition-all duration-200"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(project.id);
+        }
+      }}
+      className="rounded-2xl p-4 cursor-pointer transition-all duration-200 hover:border-[var(--purple-400)]/40"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-subtle)",
@@ -60,15 +69,16 @@ export default function ProjectCard({ project, onOpen, onDelete }: Props) {
             e.stopPropagation();
             onDelete(project.id);
           }}
-          className="p-2 rounded-lg transition-colors shrink-0"
+          className="p-2 rounded-lg transition-colors shrink-0 hover:bg-[var(--bg-hover)]"
           style={{ color: "var(--text-muted)" }}
+          aria-label={`Delete project ${project.name}`}
         >
           <Trash2 size={16} />
         </button>
       </div>
     </div>
   );
-}
+});
 
 function formatTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);

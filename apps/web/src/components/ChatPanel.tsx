@@ -61,6 +61,8 @@ export default function ChatPanel({
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-3 py-4 space-y-3"
+        aria-live="polite"
+        aria-label="Chat messages"
       >
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3">
@@ -80,7 +82,7 @@ export default function ChatPanel({
             </div>
             <p className="text-lg font-semibold gradient-text">DevFlow</p>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Describe lo que quieres construir
+              Describe what you want to build
             </p>
           </div>
         )}
@@ -140,6 +142,7 @@ export default function ChatPanel({
               onKeyDown={handleKeyDown}
               placeholder="Describe what you want to build..."
               rows={1}
+              aria-label="Message input"
               className="flex-1 bg-transparent px-4 py-2.5 text-sm resize-none outline-none"
               style={{ color: "var(--text-primary)" }}
             />
@@ -147,6 +150,7 @@ export default function ChatPanel({
           <button
             onClick={handleSend}
             disabled={!input.trim() || streaming}
+            aria-label={streaming ? "Sending..." : "Send message"}
             className="p-2.5 rounded-2xl text-white disabled:opacity-30 disabled:pointer-events-none shrink-0 gradient-btn"
           >
             {streaming ? (
