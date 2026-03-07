@@ -34,9 +34,7 @@ function WorkspaceContent() {
   const projectId = searchParams.get("id") ?? "";
 
   const [project, setProject] = useState<ProjectMeta | null>(null);
-  const [agents, setAgents] = useState<AgentNode[]>(() =>
-    loadAgents(projectId),
-  );
+  const [agents, setAgents] = useState<AgentNode[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [chatAgentId, setChatAgentId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -48,6 +46,18 @@ function WorkspaceContent() {
       const found = projects.find((p) => p.id === projectId);
       if (found) setProject(found);
     });
+  }, [projectId]);
+
+  // Hydration-safe local state load: keep first render stable between SSR and client
+  useEffect(() => {
+    let cancelled = false;
+    const nextAgents = projectId ? loadAgents(projectId) : [];
+    queueMicrotask(() => {
+      if (!cancelled) setAgents(nextAgents);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [projectId]);
 
   // Persist agents on change

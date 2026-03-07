@@ -3,7 +3,7 @@
 import { ArrowLeft, Loader2, Send, Wifi, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AGENT_ROLES, type AgentMessage, type AgentNode } from "../lib/agents";
-import { getStoredToken } from "../lib/api";
+import { buildWebSocketUrl } from "../lib/ws";
 import MessageBubble from "./MessageBubble";
 
 interface AgentChatProps {
@@ -37,10 +37,7 @@ export default function AgentChat({
     function connect() {
       if (disposed) return;
 
-      const token = getStoredToken();
-      const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
-      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${proto}//${window.location.host}/ws${tokenParam}`;
+      const wsUrl = buildWebSocketUrl("/ws");
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -133,10 +130,13 @@ export default function AgentChat({
       };
     }
 
-    connect();
+    // Defer initial connect so React strict-mode cleanup cancels before the
+    // WebSocket is actually created (avoids "closed before established" warning)
+    const initTimer = setTimeout(connect, 0);
 
     return () => {
       disposed = true;
+      clearTimeout(initTimer);
       clearTimeout(reconnectTimer);
       wsRef.current?.close();
     };
@@ -262,18 +262,12 @@ export default function AgentChat({
           </div>
         )}
         {messages.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            role={msg.role}
-            content={msg.content}
-          />
+          <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
         ))}
         {/* Thinking indicator — shows before first delta arrives */}
         {thinking && (
           <div className="flex justify-start animate-msg-in">
-            <div
-              className="px-4 py-3 rounded-2xl bubble-received flex items-center gap-2"
-            >
+            <div className="px-4 py-3 rounded-2xl bubble-received flex items-center gap-2">
               <div className="flex gap-1">
                 <span
                   className="w-1.5 h-1.5 rounded-full"
@@ -297,13 +291,8 @@ export default function AgentChat({
                   }}
                 />
               </div>
-              <span
-                className="text-xs"
-                style={{ color: "var(--text-muted)" }}
-              >
-                {toolStatus
-                  ? `Ejecutando ${toolStatus}...`
-                  : "Pensando..."}
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                {toolStatus ? `Ejecutando ${toolStatus}...` : "Pensando..."}
               </span>
             </div>
           </div>

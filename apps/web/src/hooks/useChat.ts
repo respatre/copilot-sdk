@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getStoredToken } from "../lib/api";
+import { buildWebSocketUrl } from "../lib/ws";
 
 export interface ChatMessage {
   id: string;
@@ -54,10 +54,7 @@ export function useChat(projectId: string | null) {
       const isReconnect = reconnectCountRef.current > 0;
       setConnectionStatus(isReconnect ? "reconnecting" : "connecting");
 
-      const token = getStoredToken();
-      const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
-      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = proto + "//" + window.location.host + "/ws" + tokenParam;
+      const wsUrl = buildWebSocketUrl("/ws");
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
