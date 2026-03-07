@@ -72,7 +72,7 @@ export default function AddAgentModal({
             className="text-sm font-semibold"
             style={{ color: "var(--text-primary)" }}
           >
-            {step === "pick" ? "Add Agent" : "Configure Agent"}
+            {step === "pick" ? "Agregar Agente" : "Configurar Agente"}
           </h2>
           <button
             onClick={handleClose}
@@ -136,7 +136,7 @@ export default function AddAgentModal({
                   className="text-[11px] font-medium mb-1 block"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  Agent name
+                  Nombre del agente
                 </label>
                 <input
                   type="text"
@@ -148,7 +148,7 @@ export default function AddAgentModal({
                     color: "var(--text-primary)",
                     border: "1px solid var(--border-subtle)",
                   }}
-                  placeholder="e.g. Backend Coder"
+                  placeholder="ej. Programador Backend"
                 />
               </div>
 
@@ -158,7 +158,7 @@ export default function AddAgentModal({
                   className="text-[11px] font-medium mb-1 block"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  System prompt
+                  Prompt del sistema
                 </label>
                 <textarea
                   value={prompt}
@@ -170,7 +170,7 @@ export default function AddAgentModal({
                     color: "var(--text-primary)",
                     border: "1px solid var(--border-subtle)",
                   }}
-                  placeholder="Describe what this agent should do..."
+                  placeholder="Describe qué debe hacer este agente..."
                 />
               </div>
             </div>
@@ -191,7 +191,7 @@ export default function AddAgentModal({
                 color: "var(--text-secondary)",
               }}
             >
-              Back
+              Atrás
             </button>
             <button
               onClick={handleAdd}
@@ -199,7 +199,7 @@ export default function AddAgentModal({
               style={{ background: "var(--gradient-btn)", color: "#fff" }}
             >
               <Plus size={12} />
-              Add Agent
+              Agregar Agente
             </button>
           </div>
         )}

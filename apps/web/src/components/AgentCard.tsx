@@ -83,7 +83,7 @@ export default function AgentCard({
             }}
           >
             <MessageSquare size={10} />
-            Chat
+            Chatear
           </button>
           <button
             onClick={(e) => {

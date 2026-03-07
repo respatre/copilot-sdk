@@ -101,7 +101,7 @@ function WorkspaceContent() {
         className="h-dvh flex items-center justify-center"
         style={{ color: "var(--text-muted)", background: "var(--bg-primary)" }}
       >
-        No project selected
+        Ningún proyecto seleccionado
       </div>
     );
   }
@@ -116,7 +116,7 @@ function WorkspaceContent() {
           onClick={() => router.push("/")}
           className="p-1.5 rounded-lg transition-colors"
           style={{ color: "var(--text-muted)" }}
-          aria-label="Back to projects"
+          aria-label="Volver a proyectos"
         >
           <ArrowLeft size={18} />
         </button>
@@ -125,7 +125,7 @@ function WorkspaceContent() {
             className="text-sm font-semibold truncate"
             style={{ color: "var(--text-primary)" }}
           >
-            {project?.name ?? "Loading..."}
+            {project?.name ?? "Cargando..."}
           </h1>
           <p
             className="text-[10px] font-mono"
@@ -141,7 +141,7 @@ function WorkspaceContent() {
             color: "var(--purple-400)",
           }}
         >
-          {agents.length} agent{agents.length !== 1 ? "s" : ""}
+          {agents.length} agente{agents.length !== 1 ? "s" : ""}
         </div>
       </header>
 
@@ -180,7 +180,7 @@ export default function WorkspacePage() {
     <Suspense
       fallback={
         <div className="h-dvh flex items-center justify-center text-zinc-500">
-          Loading...
+          Cargando...
         </div>
       }
     >

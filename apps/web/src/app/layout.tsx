@@ -23,8 +23,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "DevFlow — Mobile IDE",
-  description: "Build software with natural language from your phone",
+  title: "DevFlow — IDE Móvil",
+  description: "Construye software con lenguaje natural desde tu teléfono",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

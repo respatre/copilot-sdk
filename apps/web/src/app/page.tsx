@@ -92,7 +92,7 @@ export default function HomePage() {
       const project = await createProject(name, model, provider);
       router.push(`/workspace?id=${project.id}`);
     } catch (err) {
-      alert("Failed to create project: " + String(err));
+      alert("Error al crear proyecto: " + String(err));
     }
   };
 
@@ -102,7 +102,7 @@ export default function HomePage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this project?")) return;
+    if (!confirm("¿Eliminar este proyecto?")) return;
     await deleteProject(id);
     setProjects((prev) => prev.filter((p) => p.id !== id));
   };
@@ -139,7 +139,7 @@ export default function HomePage() {
               </div>
               <h1 className="text-3xl font-bold gradient-text">DevFlow</h1>
               <p style={{ color: "var(--text-secondary)" }} className="text-sm">
-                Sign in to start building
+                Inicia sesión para empezar a construir
               </p>
             </div>
 
@@ -150,7 +150,7 @@ export default function HomePage() {
                   className="text-xs block mb-1.5 font-medium"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  User
+                  Usuario
                 </label>
                 <input
                   type="text"
@@ -168,7 +168,7 @@ export default function HomePage() {
                   className="text-xs block mb-1.5 font-medium"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  Password
+                  Contraseña
                 </label>
                 <input
                   type="password"
@@ -194,7 +194,7 @@ export default function HomePage() {
                 className="w-full py-3 rounded-2xl text-sm font-semibold text-white flex items-center justify-center gap-2 gradient-btn disabled:opacity-40 disabled:pointer-events-none"
               >
                 <Zap size={16} />
-                {authLoading ? "Connecting..." : "Sign in"}
+                {authLoading ? "Conectando..." : "Iniciar sesión"}
               </button>
             </div>
           </div>
@@ -213,7 +213,7 @@ export default function HomePage() {
                   onClick={() => router.push("/settings")}
                   className="p-1.5 rounded-lg transition-colors"
                   style={{ color: "var(--text-muted)" }}
-                  aria-label="Settings"
+                  aria-label="Ajustes"
                 >
                   <Settings size={14} />
                 </button>
@@ -221,7 +221,7 @@ export default function HomePage() {
                   onClick={handleLogout}
                   className="p-1.5 rounded-lg transition-colors"
                   style={{ color: "var(--text-muted)" }}
-                  aria-label="Sign out"
+                  aria-label="Cerrar sesión"
                 >
                   <LogOut size={14} />
                 </button>
@@ -231,7 +231,7 @@ export default function HomePage() {
               className="text-sm mt-1"
               style={{ color: "var(--text-secondary)" }}
             >
-              Build software with natural language
+              Construye software con lenguaje natural
             </p>
           </header>
 
@@ -245,12 +245,14 @@ export default function HomePage() {
               </div>
             ) : projects.length === 0 && !showNew ? (
               <div className="text-center mt-16 space-y-4">
-                <p style={{ color: "var(--text-muted)" }}>No projects yet</p>
+                <p style={{ color: "var(--text-muted)" }}>
+                  Aún no hay proyectos
+                </p>
                 <button
                   onClick={() => setShowNew(true)}
                   className="px-6 py-2.5 rounded-2xl text-sm font-semibold text-white gradient-btn"
                 >
-                  Create your first project
+                  Crea tu primer proyecto
                 </button>
               </div>
             ) : (
@@ -283,7 +285,7 @@ export default function HomePage() {
               onClick={() => setShowNew(true)}
               className="fixed bottom-6 right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform z-40 gradient-btn"
               style={{ boxShadow: "0 8px 30px rgba(168, 85, 247, 0.35)" }}
-              aria-label="Create new project"
+              aria-label="Crear nuevo proyecto"
             >
               <Plus size={24} className="text-white" />
             </button>

@@ -204,7 +204,7 @@ export default function AgentChat({
           >
             <span className="text-3xl">{meta.icon}</span>
             <p className="text-xs text-center max-w-[200px]">
-              Start a conversation with{" "}
+              Inicia una conversación con{" "}
               <strong style={{ color: meta.color }}>{agent.name}</strong>
             </p>
           </div>
@@ -248,7 +248,7 @@ export default function AgentChat({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            placeholder={`Message ${agent.name}...`}
+            placeholder={`Mensaje a ${agent.name}...`}
             className="flex-1 px-3 py-2 rounded-xl text-sm outline-none resize-none max-h-24"
             style={{
               background: "var(--bg-input)",

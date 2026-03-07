@@ -199,7 +199,7 @@ export default function AgentCanvas({
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
           <span className="text-4xl">🤖</span>
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            No agents yet
+            Aún no hay agentes
           </p>
           <button
             onClick={onAddAgent}
@@ -207,7 +207,7 @@ export default function AgentCanvas({
             style={{ background: "var(--gradient-btn)", color: "#fff" }}
           >
             <Plus size={12} />
-            Add your first agent
+            Agregar tu primer agente
           </button>
         </div>
       )}

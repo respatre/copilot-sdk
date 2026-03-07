@@ -86,13 +86,13 @@ export default function NewProjectModal({
             className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
           >
-            New Project
+            Nuevo Proyecto
           </h2>
           <button
             onClick={onCancel}
             className="p-1.5 rounded-lg"
             style={{ color: "var(--text-muted)" }}
-            aria-label="Close"
+            aria-label="Cerrar"
           >
             <X size={18} />
           </button>
@@ -104,9 +104,9 @@ export default function NewProjectModal({
           style={{ background: "var(--bg-input)" }}
         >
           {[
-            { id: "new" as SourceTab, label: "Blank", icon: GitBranch },
+            { id: "new" as SourceTab, label: "Nuevo", icon: GitBranch },
             { id: "github" as SourceTab, label: "GitHub", icon: Github },
-            { id: "upload" as SourceTab, label: "Upload", icon: Upload },
+            { id: "upload" as SourceTab, label: "Subir", icon: Upload },
           ].map((t) => (
             <button
               key={t.id}
@@ -208,13 +208,13 @@ function BlankProjectTab({
           className="text-xs block mb-1.5"
           style={{ color: "var(--text-secondary)" }}
         >
-          Project name
+          Nombre del proyecto
         </label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-          placeholder="My Awesome App"
+          placeholder="Mi App Genial"
           autoFocus
           className="w-full input-orbe px-4 py-2.5 text-sm outline-none"
           style={{ color: "var(--text-primary)" }}
@@ -228,7 +228,7 @@ function BlankProjectTab({
             className="text-xs block mb-1.5"
             style={{ color: "var(--text-secondary)" }}
           >
-            AI Provider
+            Proveedor IA
           </label>
           <select
             value={provider}
@@ -252,7 +252,7 @@ function BlankProjectTab({
           style={{ color: "var(--text-muted)" }}
         >
           <Loader2 className="animate-spin" size={14} />
-          <span className="text-xs">Loading models...</span>
+          <span className="text-xs">Cargando modelos...</span>
         </div>
       ) : models.length > 0 ? (
         <div>
@@ -260,7 +260,7 @@ function BlankProjectTab({
             className="text-xs block mb-1.5"
             style={{ color: "var(--text-secondary)" }}
           >
-            Model
+            Modelo
           </label>
           <select
             value={model}
@@ -281,7 +281,7 @@ function BlankProjectTab({
         disabled={!name.trim() || creating}
         className="w-full py-2.5 rounded-2xl text-sm font-semibold text-white gradient-btn disabled:opacity-40"
       >
-        {creating ? "Creating..." : "Create Project"}
+        {creating ? "Creando..." : "Crear Proyecto"}
       </button>
     </div>
   );
@@ -387,14 +387,14 @@ function GitHubTab({
           className="text-sm text-center"
           style={{ color: "var(--text-secondary)" }}
         >
-          Connect your GitHub account to import repositories
+          Conecta tu cuenta de GitHub para importar repositorios
         </p>
         <button
           onClick={handleConnect}
           className="px-6 py-2.5 rounded-2xl text-sm font-semibold text-white flex items-center gap-2 gradient-btn"
         >
           <Github size={16} />
-          Connect GitHub
+          Conectar GitHub
         </button>
         {error && (
           <p className="text-xs" style={{ color: "var(--red-500)" }}>
@@ -436,7 +436,7 @@ function GitHubTab({
           className="text-xs px-2 py-1 rounded"
           style={{ color: "var(--text-muted)" }}
         >
-          Disconnect
+          Desconectar
         </button>
       </div>
 
@@ -450,7 +450,7 @@ function GitHubTab({
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search repositories..."
+          placeholder="Buscar repositorios..."
           className="w-full input-orbe pl-9 pr-4 py-2 text-sm outline-none"
           style={{ color: "var(--text-primary)" }}
         />
@@ -462,7 +462,7 @@ function GitHubTab({
           className="text-center py-6 text-sm"
           style={{ color: "var(--text-muted)" }}
         >
-          Loading repos...
+          Cargando repos...
         </div>
       ) : (
         <div className="space-y-1.5 max-h-[40vh] overflow-y-auto">
@@ -531,7 +531,7 @@ function GitHubTab({
               className="text-center py-4 text-sm"
               style={{ color: "var(--text-muted)" }}
             >
-              No repos found
+              No se encontraron repos
             </p>
           )}
         </div>
@@ -613,12 +613,12 @@ function UploadTab({
           className="text-xs block mb-1.5"
           style={{ color: "var(--text-secondary)" }}
         >
-          Project name (optional)
+          Nombre del proyecto (opcional)
         </label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="My Project"
+          placeholder="Mi Proyecto"
           className="w-full input-orbe px-4 py-2.5 text-sm outline-none"
           style={{ color: "var(--text-primary)" }}
         />
@@ -648,7 +648,7 @@ function UploadTab({
               style={{ color: "var(--purple-400)" }}
             />
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              Uploading...
+              Subiendo...
             </p>
           </>
         ) : (
@@ -658,7 +658,7 @@ function UploadTab({
               className="text-sm text-center"
               style={{ color: "var(--text-secondary)" }}
             >
-              Drag a <strong>.zip</strong> file or folder here
+              Arrastra un archivo <strong>.zip</strong> o carpeta aquí
             </p>
             <div className="flex gap-2">
               {/* ZIP upload */}
@@ -670,7 +670,7 @@ function UploadTab({
                 }}
               >
                 <Upload size={12} />
-                Upload .zip
+                Subir .zip
                 <input
                   type="file"
                   accept=".zip"
@@ -690,7 +690,7 @@ function UploadTab({
                 }}
               >
                 <FolderUp size={12} />
-                Upload folder
+                Subir carpeta
                 <input
                   type="file"
                   className="hidden"
