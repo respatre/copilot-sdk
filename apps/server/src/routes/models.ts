@@ -53,8 +53,29 @@ export function modelRoutes(): Router {
       }
 
       // Default: Copilot SDK models
-      const models = await getClient().listModels();
-      res.json(models);
+      try {
+        const models = await getClient().listModels();
+        res.json(models);
+        return;
+      } catch (listErr) {
+        console.warn(
+          "[models] listModels failed, using fallback:",
+          String(listErr).split("\n")[0],
+        );
+      }
+
+      // Fallback: well-known Copilot models when the API rejects the list call
+      res.json([
+        { id: "gpt-4.1", name: "GPT-4.1" },
+        { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
+        { id: "gpt-4.1-nano", name: "GPT-4.1 Nano" },
+        { id: "gpt-4o", name: "GPT-4o" },
+        { id: "gpt-4o-mini", name: "GPT-4o Mini" },
+        { id: "claude-sonnet-4", name: "Claude Sonnet 4" },
+        { id: "claude-sonnet-4-thinking", name: "Claude Sonnet 4 Thinking" },
+        { id: "o4-mini", name: "o4-mini" },
+        { id: "o3-mini", name: "o3-mini" },
+      ]);
     } catch (err) {
       console.error("[models] error:", err);
       res.json([]);
