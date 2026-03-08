@@ -46,6 +46,20 @@ export async function stopCopilot(): Promise<void> {
   }
 }
 
+/** Stop, clear stale sessions, and start a fresh client */
+export async function reconnectCopilot(): Promise<CopilotClient> {
+  console.log("[copilot] reconnecting — disposing stale client...");
+  const { clearAllSessions } = await import("./sessions.js");
+  try {
+    await stopCopilot();
+  } catch {
+    /* best effort */
+  }
+  clearAllSessions();
+  client = null;
+  return initCopilot();
+}
+
 export async function buildSessionConfig(
   projectDir: string,
   model: string,

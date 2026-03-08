@@ -1,5 +1,6 @@
 import type { Server } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
+import { reconnectCopilot } from "./copilot.js";
 import { verifyWsToken } from "./middleware/auth.js";
 import {
   getActiveSession,
@@ -94,9 +95,7 @@ async function handleChat(
   subscribeToProject(ws, projectId);
 
   // Route session events to subscribed clients only (not global broadcast)
-  setProjectBroadcast(projectId, (msg) =>
-    broadcastToProject(projectId, msg),
-  );
+  setProjectBroadcast(projectId, (msg) => broadcastToProject(projectId, msg));
 
   const sendToClient = (msg: WsOutgoing) => {
     if (ws.readyState === WebSocket.OPEN) {
@@ -108,18 +107,36 @@ async function handleChat(
     // Resume or get existing session
     let session = getActiveSession(projectId);
     if (!session) {
-      const entry = await resumeProject(
-        projectId,
-        (msg) => broadcastToProject(projectId, msg),
+      const entry = await resumeProject(projectId, (msg) =>
+        broadcastToProject(projectId, msg),
       );
       session = entry.session;
     }
 
     await session.send({ prompt });
   } catch (err) {
+    const errMsg = String(err);
+    // If the CLI connection died, reconnect and retry once
+    if (errMsg.includes("disposed") || errMsg.includes("not connected")) {
+      console.warn("[ws] connection disposed — reconnecting copilot...");
+      try {
+        await reconnectCopilot();
+        const entry = await resumeProject(projectId, (msg) =>
+          broadcastToProject(projectId, msg),
+        );
+        await entry.session.send({ prompt });
+        return; // retry succeeded
+      } catch (retryErr) {
+        sendToClient({
+          type: "error",
+          message: `Failed after reconnect: ${String(retryErr)}`,
+        });
+        return;
+      }
+    }
     sendToClient({
       type: "error",
-      message: `Failed to send message: ${String(err)}`,
+      message: `Failed to send message: ${errMsg}`,
     });
   }
 }
